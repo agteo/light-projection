@@ -10,6 +10,7 @@ import { WebGLRenderer, type RenderMode } from '../render/renderer';
 import { createSyncChannel, postState, type SyncMessage } from '../sync/channel';
 import { mountCanvasEditor, type CanvasEditorHandle } from './canvasEditor';
 import { mountSourcePanel } from './sourcePanel';
+import { mountMidiPanel } from './midiPanel';
 import { openOutputWindow } from './outputWindow';
 
 function sourceLabel(projectZoneSource: import('../domain/types').SourceAssignment): string {
@@ -35,7 +36,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
       <header class="topbar">
         <div class="brand">
           <h1>Lazy Mapper</h1>
-          <p class="tag">Phase 7 — audio reactivity</p>
+          <p class="tag">Phase 8 — MIDI learn</p>
         </div>
         <div class="topbar-actions">
           <label class="field name-field">
@@ -84,6 +85,8 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
         </div>
         <p class="muted mic-hint">Enable mic, then bind a zone (bass→opacity is a good clap test).</p>
       </section>
+
+      <section class="panel" id="midi-panel"></section>
 
       <section class="panel">
         <div class="panel-head">
@@ -150,6 +153,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
 
   const sourcePanel = mountSourcePanel(sourceHost, store, () => editor.getSelectedZoneId());
   sourcePanel.setZoneId(editor.getSelectedZoneId());
+  mountMidiPanel(root.querySelector<HTMLElement>('#midi-panel')!, store);
 
   const openOutputBtn = root.querySelector<HTMLButtonElement>('#open-output')!;
   const blackoutBtn = root.querySelector<HTMLButtonElement>('#toggle-blackout')!;
@@ -421,7 +425,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   syncBlackoutUi();
   render();
   broadcast();
-  setStatus('Enable mic · bind zone audio (bass→opacity) · open output to project.');
+  setStatus('Connect MIDI · Learn opacity/speed/visibility/blackout · mappings save with the project.');
 }
 
 function escapeAttr(value: string): string {

@@ -1,5 +1,6 @@
 import { createDefaultProject, createZone } from '../domain/factory';
-import type { Project, Zone } from '../domain/types';
+import type { MidiMapping, Project, Zone } from '../domain/types';
+import { upsertMidiMapping, removeMidiMapping } from '../midi/apply';
 import { loadInitialProject, saveToLocalStorage } from './persistence';
 
 export type Listener = (project: Project) => void;
@@ -18,6 +19,8 @@ export interface ProjectStore {
   duplicateZone: (id: string) => Zone | null;
   /** Swap zIndex with neighbor (dir -1 = send back, +1 = bring forward). */
   nudgeZoneZ: (id: string, dir: -1 | 1) => void;
+  upsertMidiMapping: (mapping: MidiMapping) => void;
+  removeMidiMapping: (id: string) => void;
   /** Persist current project to localStorage immediately. */
   save: () => void;
 }
@@ -99,6 +102,7 @@ export function createProjectStore(initial?: Project): ProjectStore {
       commit({
         ...project,
         zones: project.zones.filter((z) => z.id !== id),
+        midiMappings: project.midiMappings.filter((m) => !m.target.includes(`zone:${id}:`)),
       });
     },
 
@@ -131,6 +135,20 @@ export function createProjectStore(initial?: Project): ProjectStore {
           if (z.id === b.id) return { ...z, zIndex: a.zIndex };
           return z;
         }),
+      });
+    },
+
+    upsertMidiMapping: (mapping) => {
+      commit({
+        ...project,
+        midiMappings: upsertMidiMapping(project.midiMappings, mapping),
+      });
+    },
+
+    removeMidiMapping: (id) => {
+      commit({
+        ...project,
+        midiMappings: removeMidiMapping(project.midiMappings, id),
       });
     },
 

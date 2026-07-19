@@ -2,7 +2,7 @@
 
 Living tracker for building the local web projection-mapping app from `lazy-lighting-clone-spec.md`.
 
-**Last updated:** 2026-07-19 (Phase 7)
+**Last updated:** 2026-07-19 (Phase 8)
 
 ## Locked decisions
 
@@ -24,10 +24,18 @@ Living tracker for building the local web projection-mapping app from `lazy-ligh
 | 5 | Media + compositing | ✅ done | Image/video textures + fit; opacity/feather/blend; zIndex reorder; missing-media state |
 | 6 | Output window + sync | ✅ done | `output.html` + BroadcastChannel; blackout `B`; fullscreen; optional second-screen placement |
 | 7 | Audio reactivity | ✅ done | Mic analyser (bands + spectrum); per-zone bindings; level meters; sync to output |
-| 8 | MIDI learn | ⬜ todo | Feature-detect; CC/note mappings in project JSON |
+| 8 | MIDI learn | ✅ done | Web MIDI (Chrome/Edge); Learn for opacity/speed/visibility/blackout; persisted in project JSON |
 | 9 | Polish + README | ⬜ todo | Subdivide, test/white aids, projector setup notes |
 
 Status legend: `⬜ todo` · `🚧 in progress` · `✅ done` · `⛔ blocked`
+
+## Phase 8 notes (2026-07-19)
+
+- Web MIDI feature-detect; panel explains Chrome/Edge requirement when missing
+- Learn flow: click Learn → move CC / press note (15s timeout)
+- Targets: master blackout, per-zone opacity / visibility / effect speed
+- CC → continuous; Note → toggles (also CC≥0.5 for blackout/visibility)
+- Mappings stored in `project.midiMappings` (export/import + localStorage)
 
 ## Phase 7 notes (2026-07-19)
 
@@ -116,6 +124,7 @@ From the spec — mark when verified:
 - [x] Video/image sources with fit modes (re-import after reload; object URLs don’t persist)
 - [x] Output window syncs via BroadcastChannel; `B` blackout
 - [x] Clap test path: bass→opacity binding with mic analyser
+- [x] MIDI learn path for opacity / blackout (Chrome/Edge)
 
 ## Privacy (public repo)
 
@@ -130,4 +139,4 @@ Safe to commit: source, docs, the clean-room spec, this tracker, public README.
 
 ## Blockers / open questions
 
-_None. Ready for Phase 8 (MIDI learn)._
+_None. Ready for Phase 9 (polish + README)._

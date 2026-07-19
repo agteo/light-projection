@@ -6,7 +6,7 @@ Clean-room implementation inspired by the Lazy Lighting workflow — no copied a
 
 ## Status
 
-**Phase 7 complete** — mic audio reactivity with per-zone bindings. See [PROGRESS.md](./PROGRESS.md) for phased build status and [lazy-lighting-clone-spec.md](./lazy-lighting-clone-spec.md) for the full product spec.
+**Phase 8 complete** — MIDI learn mappings (Chrome/Edge). See [PROGRESS.md](./PROGRESS.md) for phased build status and [lazy-lighting-clone-spec.md](./lazy-lighting-clone-spec.md) for the full product spec.
 
 **Stack (locked):** Vanilla TypeScript · Vite · WebGL2 · `BroadcastChannel` editor↔output sync.
 
