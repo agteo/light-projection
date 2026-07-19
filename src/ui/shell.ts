@@ -5,6 +5,7 @@ import {
   loadFromLocalStorage,
   readProjectFile,
 } from '../state/persistence';
+import { AnalyserService, type AudioFrame } from '../audio/analyser';
 import { WebGLRenderer, type RenderMode } from '../render/renderer';
 import { createSyncChannel, postState, type SyncMessage } from '../sync/channel';
 import { mountCanvasEditor, type CanvasEditorHandle } from './canvasEditor';
@@ -34,7 +35,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
       <header class="topbar">
         <div class="brand">
           <h1>Lazy Mapper</h1>
-          <p class="tag">Phase 6 — output window + sync</p>
+          <p class="tag">Phase 7 — audio reactivity</p>
         </div>
         <div class="topbar-actions">
           <label class="field name-field">
@@ -69,6 +70,20 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
       </section>
 
       <section class="panel" id="source-panel"></section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Audio input</h2>
+          <button type="button" id="mic-toggle">Enable mic</button>
+        </div>
+        <div class="meters" aria-label="Audio levels">
+          <div class="meter"><span>Level</span><div class="meter-track"><i id="meter-level"></i></div></div>
+          <div class="meter"><span>Bass</span><div class="meter-track"><i id="meter-bass"></i></div></div>
+          <div class="meter"><span>Mid</span><div class="meter-track"><i id="meter-mid"></i></div></div>
+          <div class="meter"><span>Treble</span><div class="meter-track"><i id="meter-treble"></i></div></div>
+        </div>
+        <p class="muted mic-hint">Enable mic, then bind a zone (bass→opacity is a good clap test).</p>
+      </section>
 
       <section class="panel">
         <div class="panel-head">
@@ -138,6 +153,53 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
 
   const openOutputBtn = root.querySelector<HTMLButtonElement>('#open-output')!;
   const blackoutBtn = root.querySelector<HTMLButtonElement>('#toggle-blackout')!;
+  const micToggle = root.querySelector<HTMLButtonElement>('#mic-toggle')!;
+  const meterLevel = root.querySelector<HTMLElement>('#meter-level')!;
+  const meterBass = root.querySelector<HTMLElement>('#meter-bass')!;
+  const meterMid = root.querySelector<HTMLElement>('#meter-mid')!;
+  const meterTreble = root.querySelector<HTMLElement>('#meter-treble')!;
+
+  const analyser = new AnalyserService();
+  const paintMeters = (frame: AudioFrame): void => {
+    meterLevel.style.transform = `scaleX(${frame.level})`;
+    meterBass.style.transform = `scaleX(${frame.bass})`;
+    meterMid.style.transform = `scaleX(${frame.mid})`;
+    meterTreble.style.transform = `scaleX(${frame.treble})`;
+  };
+  paintMeters(analyser.getFrame());
+
+  analyser.subscribe((frame) => {
+    renderer.setAudioFrame(frame);
+    paintMeters(frame);
+    sync.postMessage({
+      type: 'audio',
+      level: frame.level,
+      bass: frame.bass,
+      mid: frame.mid,
+      treble: frame.treble,
+      spectrum: Array.from(frame.spectrum),
+    } satisfies SyncMessage);
+  });
+
+  micToggle.addEventListener('click', async () => {
+    try {
+      if (analyser.active) {
+        analyser.stop();
+        renderer.setAudioFrame(null);
+        paintMeters(analyser.getFrame());
+        micToggle.textContent = 'Enable mic';
+        micToggle.classList.remove('active');
+        setStatus('Mic stopped.');
+        return;
+      }
+      await analyser.start();
+      micToggle.textContent = 'Disable mic';
+      micToggle.classList.add('active');
+      setStatus('Mic enabled — bind a zone to bass→opacity and clap.');
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : 'Mic permission denied.', 'err');
+    }
+  });
 
   const setModeButtons = (mode: RenderMode): void => {
     modeLiveBtn.classList.toggle('active', mode === 'live');
@@ -359,7 +421,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   syncBlackoutUi();
   render();
   broadcast();
-  setStatus('Open output for the projector · B blackout · modes sync over BroadcastChannel.');
+  setStatus('Enable mic · bind zone audio (bass→opacity) · open output to project.');
 }
 
 function escapeAttr(value: string): string {

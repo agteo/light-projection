@@ -6,7 +6,7 @@ import {
   type EffectParamDef,
 } from '../effects/registry';
 import { defaultEffectSource } from '../domain/factory';
-import type { BlendMode, SourceAssignment, Zone } from '../domain/types';
+import type { AudioBand, AudioTarget, BlendMode, SourceAssignment, Zone } from '../domain/types';
 import {
   ensureVideoPlaying,
   getMediaElement,
@@ -121,6 +121,46 @@ export function mountSourcePanel(
           </label>
         </div>
       </div>
+
+      <div class="source-block audio-binding">
+        <h3 class="subhead">Audio reactivity</h3>
+        <label class="check-field">
+          <input type="checkbox" id="audio-enabled" />
+          <span>Enable binding for this zone</span>
+        </label>
+        <div id="audio-fields" class="source-block hidden">
+          <div class="field-row">
+            <label class="field">
+              <span>Band</span>
+              <select id="audio-band">
+                <option value="bass">Bass</option>
+                <option value="mid">Mid</option>
+                <option value="treble">Treble</option>
+                <option value="level">Level</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Target</span>
+              <select id="audio-target">
+                <option value="opacity">Opacity</option>
+                <option value="speed">Speed</option>
+                <option value="scale">Scale</option>
+                <option value="hue">Hue</option>
+              </select>
+            </label>
+          </div>
+          <div class="field-row">
+            <label class="field">
+              <span>Amount</span>
+              <input type="range" id="audio-amount" min="0" max="1" step="0.01" />
+            </label>
+            <label class="field">
+              <span>Smoothing</span>
+              <input type="range" id="audio-smoothing" min="0" max="0.95" step="0.01" />
+            </label>
+          </div>
+        </div>
+      </div>
     </div>
   `;
 
@@ -148,6 +188,12 @@ export function mountSourcePanel(
   const opacity = host.querySelector<HTMLInputElement>('#opacity')!;
   const feather = host.querySelector<HTMLInputElement>('#feather')!;
   const blendMode = host.querySelector<HTMLSelectElement>('#blend-mode')!;
+  const audioEnabled = host.querySelector<HTMLInputElement>('#audio-enabled')!;
+  const audioFields = host.querySelector('#audio-fields')!;
+  const audioBand = host.querySelector<HTMLSelectElement>('#audio-band')!;
+  const audioTarget = host.querySelector<HTMLSelectElement>('#audio-target')!;
+  const audioAmount = host.querySelector<HTMLInputElement>('#audio-amount')!;
+  const audioSmoothing = host.querySelector<HTMLInputElement>('#audio-smoothing')!;
 
   for (const effect of EFFECTS) {
     const opt = document.createElement('option');
@@ -250,6 +296,16 @@ export function mountSourcePanel(
     opacity.value = String(zone.opacity);
     feather.value = String(zone.feather);
     blendMode.value = zone.blendMode;
+
+    const hasAudio = zone.audio !== null;
+    audioEnabled.checked = hasAudio;
+    audioFields.classList.toggle('hidden', !hasAudio);
+    if (zone.audio) {
+      audioBand.value = zone.audio.band;
+      audioTarget.value = zone.audio.target;
+      audioAmount.value = String(zone.audio.amount);
+      audioSmoothing.value = String(zone.audio.smoothing);
+    }
 
     if (zone.source.kind === 'solid') {
       solidColor.value = normalizeColor(zone.source.color);
@@ -436,6 +492,50 @@ export function mountSourcePanel(
     const zone = selectedZone();
     if (!zone) return;
     store.updateZone(zone.id, { blendMode: blendMode.value as BlendMode });
+  });
+
+  const patchAudio = (): void => {
+    const zone = selectedZone();
+    if (!zone || !audioEnabled.checked) return;
+    store.updateZone(zone.id, {
+      audio: {
+        band: audioBand.value as AudioBand,
+        target: audioTarget.value as AudioTarget,
+        amount: Number(audioAmount.value),
+        smoothing: Number(audioSmoothing.value),
+      },
+    });
+  };
+
+  audioEnabled.addEventListener('change', () => {
+    if (suppress) return;
+    const zone = selectedZone();
+    if (!zone) return;
+    if (!audioEnabled.checked) {
+      store.updateZone(zone.id, { audio: null });
+      return;
+    }
+    store.updateZone(zone.id, {
+      audio: {
+        band: 'bass',
+        target: 'opacity',
+        amount: 0.8,
+        smoothing: 0.4,
+      },
+    });
+  });
+
+  audioBand.addEventListener('change', () => {
+    if (!suppress) patchAudio();
+  });
+  audioTarget.addEventListener('change', () => {
+    if (!suppress) patchAudio();
+  });
+  audioAmount.addEventListener('input', () => {
+    if (!suppress) patchAudio();
+  });
+  audioSmoothing.addEventListener('input', () => {
+    if (!suppress) patchAudio();
   });
 
   const unsub = store.subscribe(() => syncForm());

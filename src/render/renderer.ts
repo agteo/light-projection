@@ -1,4 +1,6 @@
 import type { BlendMode, Zone } from '../domain/types';
+import type { AudioFrame } from '../audio/analyser';
+import { ZoneAudioState, type ZoneAudioMods } from '../audio/zoneAudio';
 import { effectShaderId, parseHexColor } from '../effects/registry';
 import { getMediaElement } from '../media/loader';
 import { isConvexQuad, quadToUnitSquare, type Mat3 } from '../math/homography';
@@ -71,6 +73,8 @@ export class WebGLRenderer {
   private readonly locSpeed: WebGLUniformLocation;
   private readonly locAudio: WebGLUniformLocation;
   private readonly locFeather: WebGLUniformLocation;
+  private readonly locUvScale: WebGLUniformLocation;
+  private readonly locHueShift: WebGLUniformLocation;
   private readonly locColor1: WebGLUniformLocation;
   private readonly locColor2: WebGLUniformLocation;
   private readonly locParams: WebGLUniformLocation;
@@ -89,6 +93,8 @@ export class WebGLRenderer {
   private audioLevel = 0;
   private spectrumBins: Float32Array | null = null;
   private blackout = false;
+  private audioFrame: AudioFrame | null = null;
+  private readonly zoneAudio = new ZoneAudioState();
 
   constructor(canvas: HTMLCanvasElement) {
     const gl = canvas.getContext('webgl2', {
@@ -108,6 +114,8 @@ export class WebGLRenderer {
     this.locSpeed = requireUniform(gl, this.program, 'u_speed');
     this.locAudio = requireUniform(gl, this.program, 'u_audio');
     this.locFeather = requireUniform(gl, this.program, 'u_feather');
+    this.locUvScale = requireUniform(gl, this.program, 'u_uvScale');
+    this.locHueShift = requireUniform(gl, this.program, 'u_hueShift');
     this.locColor1 = requireUniform(gl, this.program, 'u_color1');
     this.locColor2 = requireUniform(gl, this.program, 'u_color2');
     this.locParams = requireUniform(gl, this.program, 'u_params');
@@ -159,6 +167,18 @@ export class WebGLRenderer {
 
   setAudioLevel(level: number): void {
     this.audioLevel = Math.min(1, Math.max(0, level));
+  }
+
+  setAudioFrame(frame: AudioFrame | null): void {
+    this.audioFrame = frame;
+    if (frame) {
+      this.audioLevel = frame.level;
+      this.spectrumBins = frame.spectrum;
+    } else {
+      this.audioLevel = 0;
+      this.spectrumBins = null;
+      this.zoneAudio.reset();
+    }
   }
 
   setSpectrumBins(bins: Float32Array | null): void {
@@ -336,13 +356,16 @@ export class WebGLRenderer {
 
     this.applyBlendMode(this.mode === 'live' ? zone.blendMode : 'normal');
 
+    const mods = this.zoneAudio.resolve(zone, this.mode === 'live' ? this.audioFrame : null);
     const featherUv = zone.feather / Math.max(1, Math.min(this.cssWidth, this.cssHeight));
     gl.uniformMatrix3fv(this.locHinv, false, mat3ToWebGL(hInv));
-    gl.uniform1f(this.locOpacity, zone.opacity);
-    gl.uniform1f(this.locAudio, this.audioLevel);
+    gl.uniform1f(this.locOpacity, clamp01(zone.opacity * mods.opacityMul));
+    gl.uniform1f(this.locAudio, mods.audio);
     gl.uniform1f(this.locFeather, featherUv);
+    gl.uniform1f(this.locUvScale, mods.uvScale);
+    gl.uniform1f(this.locHueShift, mods.hueShift);
 
-    const look = resolveZoneLook(zone, this.mode);
+    const look = resolveZoneLook(zone, this.mode, mods);
     gl.uniform1i(this.locEffectId, look.effectId);
     gl.uniform1f(this.locSpeed, look.speed);
     gl.uniform3f(this.locColor1, look.color1[0], look.color1[1], look.color1[2]);
@@ -381,7 +404,7 @@ interface ZoneLook {
   mediaHeight: number;
 }
 
-function resolveZoneLook(zone: Zone, mode: RenderMode): ZoneLook {
+function resolveZoneLook(zone: Zone, mode: RenderMode, mods: ZoneAudioMods): ZoneLook {
   const base: ZoneLook = {
     effectId: 0,
     speed: 1,
@@ -411,7 +434,7 @@ function resolveZoneLook(zone: Zone, mode: RenderMode): ZoneLook {
     return {
       ...base,
       effectId: effectShaderId(src.effectId),
-      speed: src.speed,
+      speed: Math.max(0.05, src.speed * mods.speedMul),
       color1: parseHexColor(src.color1),
       color2: parseHexColor(src.color2),
       params: packParams(src.effectId, src.params),
@@ -486,4 +509,8 @@ function mat3ToWebGL(m: Mat3): Float32Array {
     m[5]!,
     m[8]!,
   ]);
+}
+
+function clamp01(v: number): number {
+  return Math.min(1, Math.max(0, v));
 }

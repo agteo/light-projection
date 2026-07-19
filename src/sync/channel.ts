@@ -10,7 +10,15 @@ export type SyncMessage =
       project: Project;
       mode: RenderMode;
     }
-  | { type: 'blackout'; value: boolean };
+  | { type: 'blackout'; value: boolean }
+  | {
+      type: 'audio';
+      level: number;
+      bass: number;
+      mid: number;
+      treble: number;
+      spectrum: number[];
+    };
 
 export function createSyncChannel(): BroadcastChannel {
   return new BroadcastChannel(SYNC_CHANNEL);

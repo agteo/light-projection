@@ -23,6 +23,8 @@ uniform float u_opacity;
 uniform float u_speed;
 uniform float u_audio; // 0..1 reactive level
 uniform float u_feather; // UV-space edge soft width
+uniform float u_uvScale; // audio scale target (1 = identity)
+uniform float u_hueShift; // degrees
 uniform vec3 u_color1;
 uniform vec3 u_color2;
 uniform vec4 u_params; // effect-specific packed params
@@ -211,6 +213,33 @@ float featherMask(vec2 uv) {
   return smoothstep(0.0, soft, edge);
 }
 
+vec3 rgb2hsv(vec3 c) {
+  float cMax = max(c.r, max(c.g, c.b));
+  float cMin = min(c.r, min(c.g, c.b));
+  float d = cMax - cMin;
+  float h = 0.0;
+  if (d > 1e-5) {
+    if (cMax == c.r) h = mod((c.g - c.b) / d, 6.0);
+    else if (cMax == c.g) h = (c.b - c.r) / d + 2.0;
+    else h = (c.r - c.g) / d + 4.0;
+    h /= 6.0;
+  }
+  float s = cMax < 1e-5 ? 0.0 : d / cMax;
+  return vec3(h, s, cMax);
+}
+
+vec3 hsv2rgb(vec3 c) {
+  vec3 rgb = clamp(abs(mod(c.x * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+  return c.z * mix(vec3(1.0), rgb, c.y);
+}
+
+vec3 shiftHue(vec3 color, float degrees) {
+  if (abs(degrees) < 0.01) return color;
+  vec3 hsv = rgb2hsv(color);
+  hsv.x = fract(hsv.x + degrees / 360.0);
+  return hsv2rgb(hsv);
+}
+
 void main() {
   vec3 uvh = u_Hinv * vec3(v_pos, 1.0);
   if (abs(uvh.z) < 1e-6) discard;
@@ -218,12 +247,18 @@ void main() {
   if (uv.x < -0.001 || uv.x > 1.001 || uv.y < -0.001 || uv.y > 1.001) discard;
   uv = clamp(uv, 0.0, 1.0);
 
+  // Audio scale target: zoom UVs about center
+  float sc = max(u_uvScale, 0.05);
+  vec2 scaledUv = (uv - 0.5) / sc + 0.5;
+  if (scaledUv.x < 0.0 || scaledUv.x > 1.0 || scaledUv.y < 0.0 || scaledUv.y > 1.0) discard;
+
   vec4 color;
   if (u_effectId == 11) {
-    color = sampleMedia(uv);
+    color = sampleMedia(scaledUv);
   } else {
-    color = vec4(shade(uv), 1.0);
+    color = vec4(shade(scaledUv), 1.0);
   }
+  color.rgb = shiftHue(color.rgb, u_hueShift);
 
   float alpha = color.a * u_opacity * featherMask(uv);
   if (alpha < 0.001) discard;

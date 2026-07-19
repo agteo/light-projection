@@ -6,7 +6,7 @@ Clean-room implementation inspired by the Lazy Lighting workflow — no copied a
 
 ## Status
 
-**Phase 6 complete** — dual-window output via BroadcastChannel. See [PROGRESS.md](./PROGRESS.md) for phased build status and [lazy-lighting-clone-spec.md](./lazy-lighting-clone-spec.md) for the full product spec.
+**Phase 7 complete** — mic audio reactivity with per-zone bindings. See [PROGRESS.md](./PROGRESS.md) for phased build status and [lazy-lighting-clone-spec.md](./lazy-lighting-clone-spec.md) for the full product spec.
 
 **Stack (locked):** Vanilla TypeScript · Vite · WebGL2 · `BroadcastChannel` editor↔output sync.
 
@@ -22,7 +22,7 @@ npm run build
 npx serve dist
 ```
 
-Use **Live** mode and the Source panel for effects or imported image/video (cover/contain/stretch). Adjust opacity, feather, and blend; reorder zones with ↑↓. Test pattern / White are alignment aids.
+Use **Enable mic**, then bind a zone (e.g. bass→opacity) for a clap test. Open **Output** for the projector; **B** blackouts.
 ## Projector setup (summary)
 
 1. Open the editor (`npm run dev`) in Chrome/Edge.

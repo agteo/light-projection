@@ -60,6 +60,16 @@ channel.onmessage = (event: MessageEvent<SyncMessage>) => {
     void applyState(msg.project, msg.mode);
     return;
   }
+  if (msg.type === 'audio') {
+    const spectrum = Float32Array.from(msg.spectrum);
+    renderer.setAudioFrame({
+      level: msg.level,
+      bass: msg.bass,
+      mid: msg.mid,
+      treble: msg.treble,
+      spectrum,
+    });
+  }
 };
 
 channel.postMessage({ type: 'hello', role: 'output' } satisfies SyncMessage);

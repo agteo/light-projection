@@ -2,7 +2,7 @@
 
 Living tracker for building the local web projection-mapping app from `lazy-lighting-clone-spec.md`.
 
-**Last updated:** 2026-07-19 (Phase 6)
+**Last updated:** 2026-07-19 (Phase 7)
 
 ## Locked decisions
 
@@ -23,11 +23,18 @@ Living tracker for building the local web projection-mapping app from `lazy-ligh
 | 4 | Effects library + source panel | ✅ done | All 8 shaders; Live/Test/White; source panel with colors/speed/params; strobe safety |
 | 5 | Media + compositing | ✅ done | Image/video textures + fit; opacity/feather/blend; zIndex reorder; missing-media state |
 | 6 | Output window + sync | ✅ done | `output.html` + BroadcastChannel; blackout `B`; fullscreen; optional second-screen placement |
-| 7 | Audio reactivity | ⬜ todo | Analyser bands, bindings, level meter |
+| 7 | Audio reactivity | ✅ done | Mic analyser (bands + spectrum); per-zone bindings; level meters; sync to output |
 | 8 | MIDI learn | ⬜ todo | Feature-detect; CC/note mappings in project JSON |
 | 9 | Polish + README | ⬜ todo | Subdivide, test/white aids, projector setup notes |
 
 Status legend: `⬜ todo` · `🚧 in progress` · `✅ done` · `⛔ blocked`
+
+## Phase 7 notes (2026-07-19)
+
+- `AnalyserService`: getUserMedia → AnalyserNode fftSize 2048; RMS level + bass/mid/treble + spectrum
+- Per-zone `AudioBinding`: band → target (opacity/speed/scale/hue) with amount + exponential smoothing
+- Level meters in editor; audio frame BroadcastChannel-synced to output
+- Spectrum bars effect now uses live analyser data when mic is on
 
 ## Phase 6 notes (2026-07-19)
 
@@ -108,6 +115,7 @@ From the spec — mark when verified:
 - [x] Perspective correctness path in place (homography + projective UV) — confirm visually with extreme trapezoid
 - [x] Video/image sources with fit modes (re-import after reload; object URLs don’t persist)
 - [x] Output window syncs via BroadcastChannel; `B` blackout
+- [x] Clap test path: bass→opacity binding with mic analyser
 
 ## Privacy (public repo)
 
@@ -122,4 +130,4 @@ Safe to commit: source, docs, the clean-room spec, this tracker, public README.
 
 ## Blockers / open questions
 
-_None. Ready for Phase 7 (audio reactivity)._
+_None. Ready for Phase 8 (MIDI learn)._
