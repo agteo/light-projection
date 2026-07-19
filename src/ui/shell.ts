@@ -36,7 +36,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
       <header class="topbar">
         <div class="brand">
           <h1>Lazy Mapper</h1>
-          <p class="tag">Phase 8 — MIDI learn</p>
+          <p class="tag">Lazy Mapper — local projection mapping</p>
         </div>
         <div class="topbar-actions">
           <label class="field name-field">
@@ -65,7 +65,11 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
       <section class="panel">
         <div class="panel-head">
           <h2>Zones</h2>
-          <button type="button" id="add-zone">Add zone</button>
+          <div class="actions compact">
+            <button type="button" id="add-zone">Add zone</button>
+            <button type="button" id="split-2" title="Replace selected zone with a 2×2 grid">Split 2×2</button>
+            <button type="button" id="split-3" title="Replace selected zone with a 3×3 grid">Split 3×3</button>
+          </div>
         </div>
         <ul id="zone-list" class="zone-list"></ul>
       </section>
@@ -321,6 +325,25 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
     setStatus('Zone added.');
   });
 
+  const splitZone = (n: 2 | 3): void => {
+    const id = editor.getSelectedZoneId();
+    if (!id) {
+      setStatus('Select a zone to subdivide.', 'err');
+      return;
+    }
+    const created = store.subdivideZone(id, n);
+    if (!created || created.length === 0) {
+      setStatus('Could not subdivide zone.', 'err');
+      return;
+    }
+    editor.setSelectedZoneId(created[0]!.id);
+    sourcePanel.setZoneId(created[0]!.id);
+    setStatus(`Split into ${n}×${n} (${created.length} zones).`);
+  };
+
+  root.querySelector('#split-2')!.addEventListener('click', () => splitZone(2));
+  root.querySelector('#split-3')!.addEventListener('click', () => splitZone(3));
+
   modeLiveBtn.addEventListener('click', () => {
     renderMode = 'live';
     renderer.setMode(renderMode);
@@ -425,7 +448,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   syncBlackoutUi();
   render();
   broadcast();
-  setStatus('Connect MIDI · Learn opacity/speed/visibility/blackout · mappings save with the project.');
+  setStatus('Ready — open output for the projector, or Split 2×2 / 3×3 on a selected zone.');
 }
 
 function escapeAttr(value: string): string {

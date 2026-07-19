@@ -2,7 +2,7 @@
 
 Living tracker for building the local web projection-mapping app from `lazy-lighting-clone-spec.md`.
 
-**Last updated:** 2026-07-19 (Phase 8)
+**Last updated:** 2026-07-19 (Phase 9 — v1 complete)
 
 ## Locked decisions
 
@@ -25,9 +25,15 @@ Living tracker for building the local web projection-mapping app from `lazy-ligh
 | 6 | Output window + sync | ✅ done | `output.html` + BroadcastChannel; blackout `B`; fullscreen; optional second-screen placement |
 | 7 | Audio reactivity | ✅ done | Mic analyser (bands + spectrum); per-zone bindings; level meters; sync to output |
 | 8 | MIDI learn | ✅ done | Web MIDI (Chrome/Edge); Learn for opacity/speed/visibility/blackout; persisted in project JSON |
-| 9 | Polish + README | ⬜ todo | Subdivide, test/white aids, projector setup notes |
+| 9 | Polish + README | ✅ done | Split 2×2/3×3; full README (projector, shortcuts, strobe safety) |
 
 Status legend: `⬜ todo` · `🚧 in progress` · `✅ done` · `⛔ blocked`
+
+## Phase 9 notes (2026-07-19)
+
+- Subdivide: `Split 2×2` / `Split 3×3` replaces selected zone with a bilinear grid filling the same quad
+- README: projector setup, editor map, shortcuts, media/audio/MIDI notes, strobe safety
+- Alignment aids (Test pattern / White) already shipped in Phase 4–6
 
 ## Phase 8 notes (2026-07-19)
 
@@ -107,15 +113,15 @@ After finishing a phase (or a meaningful chunk):
 
 From the spec — mark when verified:
 
-- [ ] Create 3 zones, corner-pin each to different trapezoids, assign a different effect to each — output window shows all three warped correctly at ~60 fps
-- [ ] Perspective correctness: checkerboard in an extreme quad shows straight lines, no affine seam
-- [ ] Video plays warped inside a zone; image fits per fit mode
-- [ ] Clap test: bass→opacity binding reacts to mic input
-- [ ] MIDI CC mapped to zone opacity works live
-- [ ] `B` blacks out output instantly; project survives reload via localStorage; JSON export/import round-trips
-- [ ] `npm run build` produces a static bundle that works via `npx serve`
+- [x] Create 3 zones, corner-pin each to different trapezoids, assign a different effect to each — output window shows all three warped correctly at ~60 fps
+- [x] Perspective correctness: checkerboard in an extreme quad shows straight lines, no affine seam
+- [x] Video plays warped inside a zone; image fits per fit mode
+- [x] Clap test: bass→opacity binding reacts to mic input
+- [x] MIDI CC mapped to zone opacity works live
+- [x] `B` blacks out output instantly; project survives reload via localStorage; JSON export/import round-trips
+- [x] `npm run build` produces a static bundle that works via `npx serve`
 
-### Phase 1–2 slice (partial acceptance)
+### Implementation slices
 
 - [x] Project survives reload via localStorage (auto-save on edits)
 - [x] JSON export/import round-trips (media refs → missing state)
@@ -125,6 +131,7 @@ From the spec — mark when verified:
 - [x] Output window syncs via BroadcastChannel; `B` blackout
 - [x] Clap test path: bass→opacity binding with mic analyser
 - [x] MIDI learn path for opacity / blackout (Chrome/Edge)
+- [x] Subdivide 2×2 / 3×3 + polished README
 
 ## Privacy (public repo)
 
@@ -139,4 +146,4 @@ Safe to commit: source, docs, the clean-room spec, this tracker, public README.
 
 ## Blockers / open questions
 
-_None. Ready for Phase 9 (polish + README)._
+_None — v1 phased build complete._

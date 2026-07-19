@@ -131,8 +131,8 @@ export function mountCanvasEditor(
     hint.className = 'canvas-hint';
     wrap.appendChild(hint);
   }
-  hint.textContent =
-    'Drag corners / edge midpoints. Drag inside to move · Shift-drag to scale · Double-click empty to add · Arrows nudge (Shift = 10px).';
+    hint.textContent =
+      'Corners / edges · drag inside to move · Shift-drag scale · double-click empty to add · arrows nudge · Split 2×2/3×3 in Zones.';
 
   let selectedZoneId: string | null = store.getState().zones[0]?.id ?? null;
   let selectedCornerIndex: number | null = null;

@@ -1,4 +1,5 @@
 import { createDefaultProject, createZone } from '../domain/factory';
+import { subdivideZone } from '../domain/subdivide';
 import type { MidiMapping, Project, Zone } from '../domain/types';
 import { upsertMidiMapping, removeMidiMapping } from '../midi/apply';
 import { loadInitialProject, saveToLocalStorage } from './persistence';
@@ -17,6 +18,8 @@ export interface ProjectStore {
   renameZone: (id: string, name: string) => void;
   deleteZone: (id: string) => void;
   duplicateZone: (id: string) => Zone | null;
+  /** Replace a zone with an n×n grid filling the same quad. Returns new zones. */
+  subdivideZone: (id: string, n: 2 | 3) => Zone[] | null;
   /** Swap zIndex with neighbor (dir -1 = send back, +1 = bring forward). */
   nudgeZoneZ: (id: string, dir: -1 | 1) => void;
   upsertMidiMapping: (mapping: MidiMapping) => void;
@@ -118,6 +121,18 @@ export function createProjectStore(initial?: Project): ProjectStore {
       });
       commit({ ...project, zones: [...project.zones, zone] });
       return zone;
+    },
+
+    subdivideZone: (id, n) => {
+      const source = project.zones.find((z) => z.id === id);
+      if (!source) return null;
+      const created = subdivideZone(source, n, nextZIndex(project.zones));
+      commit({
+        ...project,
+        zones: [...project.zones.filter((z) => z.id !== id), ...created],
+        midiMappings: project.midiMappings.filter((m) => !m.target.includes(`zone:${id}:`)),
+      });
+      return created;
     },
 
     nudgeZoneZ: (id, dir) => {
