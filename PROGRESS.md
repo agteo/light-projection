@@ -1,6 +1,6 @@
 # Lazy Mapper — Progress
 
-Living tracker for building the local web projection-mapping app from `lazy-lighting-clone-spec.md`.
+Living tracker for building the local web projection-mapping app from `SPEC.md`.
 
 **Last updated:** 2026-07-19 (Phase 9 — v1 complete)
 
@@ -142,7 +142,7 @@ Do **not** commit:
 - Personal emails, private notes, or machine-specific config
 - Media files used for local testing (keep them outside the repo or gitignored)
 
-Safe to commit: source, docs, the clean-room spec, this tracker, public README.
+Safe to commit: source, docs, the product spec, this tracker, public README.
 
 ## Blockers / open questions
 

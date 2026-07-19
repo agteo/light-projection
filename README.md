@@ -2,11 +2,9 @@
 
 Local browser app for HDMI projection mapping: draw corner-pinned zones, assign effects or media, warp them with a projective (homography) transform, and output a fullscreen composite to a second display.
 
-Clean-room implementation inspired by the Lazy Lighting workflow — no copied assets, code, or branding.
-
 **Stack:** Vanilla TypeScript · Vite · WebGL2 · `BroadcastChannel` editor↔output sync.
 
-See [PROGRESS.md](./PROGRESS.md) for build history and [lazy-lighting-clone-spec.md](./lazy-lighting-clone-spec.md) for the product spec.
+See [PROGRESS.md](./PROGRESS.md) for build history and [SPEC.md](./SPEC.md) for the product spec.
 
 ## Quick start
 

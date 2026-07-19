@@ -1,18 +1,18 @@
-# Agent Handoff: Build "Lazy Mapper" — a Local Web Clone of Lazy Lighting
+# Lazy Mapper — Product Spec
 
 ## Context
 
-Lazy Lighting (lazylighting.com) is an iOS/Android app that turns any HDMI projector into a projection mapping tool. The user draws quad-shaped "zones" over real-world surfaces, assigns visuals (effects, images, videos) to each zone, warps the corners so projections align with physical objects, and makes visuals react to audio/MIDI. We are building a clean-room web clone that runs locally in the browser. Do not copy any assets, code, or branding from Lazy Lighting — replicate the concept and workflow only.
+Lazy Mapper is a local web app that turns any HDMI projector into a projection mapping tool. The user draws quad-shaped "zones" over real-world surfaces, assigns visuals (effects, images, videos) to each zone, warps the corners so projections align with physical objects, and makes visuals react to audio/MIDI. It runs entirely in the browser with no backend.
 
 ## Deliverable
 
-A single-page web app, no backend, runnable via `npm run dev` (Vite) and buildable to static files. Vanilla TypeScript or React — your choice; keep dependencies minimal. All state in-memory + persisted to `localStorage` (project save/load as JSON export/import too).
+A single-page web app, no backend, runnable via `npm run dev` (Vite) and buildable to static files. Vanilla TypeScript; keep dependencies minimal. All state in-memory + persisted to `localStorage` (project save/load as JSON export/import too).
 
 Two windows:
 1. **Editor window** — the main UI: zone list, canvas editor, effect/media assignment, audio/MIDI panels.
 2. **Output window** — opened via `window.open()`, fullscreened on the projector display (user presses F11 or use the Fullscreen API + Window Management API `getScreenDetails()` to place it on the second screen when available). Renders ONLY the final composited output on black.
 
-Both windows render from shared state. Use a `BroadcastChannel` for editor→output sync, and render in the output window itself (don't stream pixels). Alternatively render in the editor and `captureStream()` to a video in the output window — pick one, justify in README.
+Both windows render from shared state. Use a `BroadcastChannel` for editor→output sync, and render in the output window itself (don't stream pixels).
 
 ## Core Domain Model
 
@@ -75,7 +75,7 @@ All effects must respond to `u_audio` when an AudioBinding is set (e.g., speed/b
 ## Editor UX
 
 - **Canvas editor**: shows the composited output preview. Selected zone shows draggable corner handles (hit radius ≥ 12px) and edge midpoints; drag inside the quad moves the whole zone; shift-drag scales about center. Double-click empty space (or an "Add Zone" button) creates a new zone as a centered rectangle.
-- A subdivide helper: "Split 2×2 / 3×3" button that replaces a selected zone with a grid of zones filling the same quad (this mirrors Lazy Lighting's multi-channel demos).
+- A subdivide helper: "Split 2×2 / 3×3" button that replaces a selected zone with a grid of zones filling the same quad.
 - **Zone panel**: list with reorder (zIndex), rename, duplicate, delete, visibility toggle.
 - **Source panel**: pick effect + tweak params/colors/speed, or drop/import an image/video file (use object URLs; re-prompt for files on project load since object URLs don't persist — store file names and show "missing media" state).
 - **Alignment aids**: a "Test pattern" toggle that renders a grid + corner markers in every zone, and a "White" toggle (all zones full white) for focusing the projector.
