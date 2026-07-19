@@ -2,7 +2,7 @@
 
 Living tracker for building the local web projection-mapping app from `lazy-lighting-clone-spec.md`.
 
-**Last updated:** 2026-07-19 (Phase 2)
+**Last updated:** 2026-07-19 (Phase 3)
 
 ## Locked decisions
 
@@ -19,7 +19,7 @@ Living tracker for building the local web projection-mapping app from `lazy-ligh
 | 0 | Repo bootstrap & public hygiene | ✅ done | Spec + tracker + `.gitignore` on GitHub |
 | 1 | Scaffold, state, save/load | ✅ done | Vite + TS; `ProjectStore`; auto localStorage; JSON export/import; zone add/rename/dup/delete |
 | 2 | WebGL homography + test pattern | ✅ done | `quadToUnitSquare` + WebGL2 warp; procedural test pattern; corner drag with convexity guard |
-| 3 | Editor canvas interactions | ⬜ todo | Move/scale, keyboard nudge, edge midpoints, add-via-double-click |
+| 3 | Editor canvas interactions | ✅ done | Edge midpoints; move; Shift-scale; double-click add; arrow nudge (Shift=10px) |
 | 4 | Effects library + source panel | ⬜ todo | All 8 shaders; color/speed/params |
 | 5 | Media + compositing | ⬜ todo | Image/video, blend, opacity, feather, zIndex |
 | 6 | Output window + sync | ⬜ todo | `window.open`, BroadcastChannel, blackout, fullscreen |
@@ -28,6 +28,14 @@ Living tracker for building the local web projection-mapping app from `lazy-ligh
 | 9 | Polish + README | ⬜ todo | Subdivide, test/white aids, projector setup notes |
 
 Status legend: `⬜ todo` · `🚧 in progress` · `✅ done` · `⛔ blocked`
+
+## Phase 3 notes (2026-07-19)
+
+- Edge midpoint handles (square) move both endpoints of that edge
+- Drag inside quad → translate; Shift-drag → scale about centroid
+- Double-click empty canvas → add centered zone
+- Arrow keys nudge selected corner (if one active) or whole zone by 1px / 10px with Shift
+- Focus the preview overlay to receive keyboard input
 
 ## Phase 2 notes (2026-07-19)
 
@@ -86,4 +94,4 @@ Safe to commit: source, docs, the clean-room spec, this tracker, public README.
 
 ## Blockers / open questions
 
-_None. Ready for Phase 3 (full editor interactions)._
+_None. Ready for Phase 4 (effects library + source panel)._

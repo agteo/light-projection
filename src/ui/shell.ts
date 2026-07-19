@@ -31,7 +31,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
       <header class="topbar">
         <div class="brand">
           <h1>Lazy Mapper</h1>
-          <p class="tag">Phase 2 — WebGL homography + test pattern</p>
+          <p class="tag">Phase 3 — canvas editor interactions</p>
         </div>
         <label class="field name-field">
           <span>Project</span>
@@ -241,7 +241,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
 
   store.subscribe(render);
   render();
-  setStatus('Drag corners on the preview — grid lines must stay straight under extreme warps.');
+  setStatus('Drag inside to move · Shift-drag to scale · Double-click empty to add · Arrows nudge.');
 }
 
 function escapeAttr(value: string): string {

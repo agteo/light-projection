@@ -82,6 +82,11 @@ button.active {
   cursor: crosshair;
 }
 
+.overlay-canvas:focus {
+  outline: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  outline-offset: -1px;
+}
+
 .canvas-hint {
   margin: 0;
   padding: 0.55rem 0.75rem;

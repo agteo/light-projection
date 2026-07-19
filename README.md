@@ -6,7 +6,7 @@ Clean-room implementation inspired by the Lazy Lighting workflow — no copied a
 
 ## Status
 
-**Phase 2 complete** — WebGL2 projective warp with test pattern. See [PROGRESS.md](./PROGRESS.md) for phased build status and [lazy-lighting-clone-spec.md](./lazy-lighting-clone-spec.md) for the full product spec.
+**Phase 3 complete** — canvas move/scale, edge handles, keyboard nudge. See [PROGRESS.md](./PROGRESS.md) for phased build status and [lazy-lighting-clone-spec.md](./lazy-lighting-clone-spec.md) for the full product spec.
 
 **Stack (locked):** Vanilla TypeScript · Vite · WebGL2 · `BroadcastChannel` editor↔output sync.
 
@@ -22,7 +22,7 @@ npm run build
 npx serve dist
 ```
 
-In the editor: drag zone corner handles on the preview (grid lines must stay straight under extreme warps). Rename the project, add/duplicate/delete zones, and export/import JSON. Edits auto-save to `localStorage`.
+In the editor: drag corners/edge midpoints; drag inside a zone to move; Shift-drag to scale; double-click empty space to add a zone; arrow keys nudge (Shift = 10px). Export/import JSON; edits auto-save to `localStorage`.
 ## Projector setup (summary)
 
 1. Open the editor in Chrome/Edge on the laptop.

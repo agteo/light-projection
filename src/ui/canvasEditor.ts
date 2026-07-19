@@ -5,9 +5,28 @@ import type { ProjectStore } from '../state/store';
 
 const HANDLE_HIT_PX = 14;
 
-type DragState = { kind: 'corner'; zoneId: string; cornerIndex: number } | null;
+type Corners = [Vec2, Vec2, Vec2, Vec2];
 
-function pointInQuad(p: Vec2, corners: readonly [Vec2, Vec2, Vec2, Vec2]): boolean {
+type DragState =
+  | { kind: 'corner'; zoneId: string; cornerIndex: number }
+  | {
+      kind: 'edge';
+      zoneId: string;
+      edgeIndex: number;
+      origin: Vec2;
+      startCorners: Corners;
+    }
+  | { kind: 'move'; zoneId: string; origin: Vec2; startCorners: Corners }
+  | {
+      kind: 'scale';
+      zoneId: string;
+      origin: Vec2;
+      startCorners: Corners;
+      center: Vec2;
+    }
+  | null;
+
+function pointInQuad(p: Vec2, corners: readonly Corners[number][]): boolean {
   let sign = 0;
   for (let i = 0; i < 4; i++) {
     const a = corners[i]!;
@@ -23,6 +42,44 @@ function pointInQuad(p: Vec2, corners: readonly [Vec2, Vec2, Vec2, Vec2]): boole
 
 function clamp01(v: number): number {
   return Math.min(1, Math.max(0, v));
+}
+
+function cloneCorners(corners: readonly Vec2[]): Corners {
+  return corners.map((c) => ({ x: c.x, y: c.y })) as Corners;
+}
+
+function centroid(corners: readonly Vec2[]): Vec2 {
+  return {
+    x: (corners[0]!.x + corners[1]!.x + corners[2]!.x + corners[3]!.x) / 4,
+    y: (corners[0]!.y + corners[1]!.y + corners[2]!.y + corners[3]!.y) / 4,
+  };
+}
+
+function edgeMidpoint(corners: readonly Vec2[], edgeIndex: number): Vec2 {
+  const a = corners[edgeIndex]!;
+  const b = corners[(edgeIndex + 1) % 4]!;
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+function translateCorners(corners: Corners, dx: number, dy: number): Corners {
+  return corners.map((c) => ({ x: clamp01(c.x + dx), y: clamp01(c.y + dy) })) as Corners;
+}
+
+function scaleCorners(corners: Corners, center: Vec2, scale: number): Corners {
+  return corners.map((c) => ({
+    x: clamp01(center.x + (c.x - center.x) * scale),
+    y: clamp01(center.y + (c.y - center.y) * scale),
+  })) as Corners;
+}
+
+function tryCommitCorners(
+  store: ProjectStore,
+  zoneId: string,
+  next: Corners,
+): boolean {
+  if (!isConvexQuad(next)) return false;
+  store.updateZone(zoneId, { corners: next });
+  return true;
 }
 
 export interface CanvasEditorHandle {
@@ -66,21 +123,32 @@ export function mountCanvasEditor(
     stage.appendChild(overlay);
   }
 
-  if (!wrap.querySelector('.canvas-hint')) {
-    const hint = document.createElement('p');
+  overlay.tabIndex = 0;
+
+  let hint = wrap.querySelector<HTMLParagraphElement>('.canvas-hint');
+  if (!hint) {
+    hint = document.createElement('p');
     hint.className = 'canvas-hint';
-    hint.textContent =
-      'Drag corner handles into an extreme trapezoid — grid lines must stay straight (no diagonal seam).';
     wrap.appendChild(hint);
   }
+  hint.textContent =
+    'Drag corners / edge midpoints. Drag inside to move · Shift-drag to scale · Double-click empty to add · Arrows nudge (Shift = 10px).';
 
   let selectedZoneId: string | null = store.getState().zones[0]?.id ?? null;
+  let selectedCornerIndex: number | null = null;
   let drag: DragState = null;
 
-  const setSelected = (id: string | null): void => {
+  const setSelected = (id: string | null, cornerIndex: number | null = null): void => {
     selectedZoneId = id;
+    selectedCornerIndex = id == null ? null : cornerIndex;
     options.onSelectionChange?.(id);
     drawOverlay();
+  };
+
+  const pixelStep = (shift: boolean): Vec2 => {
+    const rect = overlay!.getBoundingClientRect();
+    const px = shift ? 10 : 1;
+    return { x: px / rect.width, y: px / rect.height };
   };
 
   const syncSize = (): void => {
@@ -104,14 +172,33 @@ export function mountCanvasEditor(
     };
   };
 
-  const hitCorner = (p: Vec2, zone: Zone): number | null => {
+  const hitThreshold = (): number => {
     const rect = overlay!.getBoundingClientRect();
-    const threshold = HANDLE_HIT_PX / Math.min(rect.width, rect.height);
+    return HANDLE_HIT_PX / Math.min(rect.width, rect.height);
+  };
+
+  const hitCorner = (p: Vec2, zone: Zone): number | null => {
+    const threshold = hitThreshold();
     let best = -1;
     let bestDist = threshold;
     for (let i = 0; i < 4; i++) {
       const c = zone.corners[i]!;
       const d = Math.hypot(c.x - p.x, c.y - p.y);
+      if (d <= bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    }
+    return best >= 0 ? best : null;
+  };
+
+  const hitEdge = (p: Vec2, zone: Zone): number | null => {
+    const threshold = hitThreshold();
+    let best = -1;
+    let bestDist = threshold;
+    for (let i = 0; i < 4; i++) {
+      const m = edgeMidpoint(zone.corners, i);
+      const d = Math.hypot(m.x - p.x, m.y - p.y);
       if (d <= bestDist) {
         bestDist = d;
         best = i;
@@ -144,10 +231,25 @@ export function mountCanvasEditor(
       ctx.stroke();
 
       if (!selected) continue;
-      for (const p of pts) {
+
+      for (let i = 0; i < 4; i++) {
+        const mid = edgeMidpoint(zone.corners, i);
+        const mx = mid.x * w;
+        const my = mid.y * h;
+        const s = 5 * dpr;
+        ctx.fillStyle = '#9ec9ff';
+        ctx.fillRect(mx - s, my - s, s * 2, s * 2);
+        ctx.strokeStyle = '#0b0d12';
+        ctx.lineWidth = 1.25 * dpr;
+        ctx.strokeRect(mx - s, my - s, s * 2, s * 2);
+      }
+
+      for (let i = 0; i < 4; i++) {
+        const p = pts[i]!;
+        const active = selectedCornerIndex === i;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 6 * dpr, 0, Math.PI * 2);
-        ctx.fillStyle = '#6db3ff';
+        ctx.arc(p.x, p.y, (active ? 8 : 6) * dpr, 0, Math.PI * 2);
+        ctx.fillStyle = active ? '#ffe08a' : '#6db3ff';
         ctx.fill();
         ctx.strokeStyle = '#0b0d12';
         ctx.lineWidth = 1.5 * dpr;
@@ -156,21 +258,39 @@ export function mountCanvasEditor(
     }
   };
 
+  const orderedZones = (projectZones: Zone[]): Zone[] => [
+    ...projectZones.filter((z) => z.id === selectedZoneId),
+    ...projectZones.filter((z) => z.id !== selectedZoneId),
+  ];
+
   const onPointerDown = (event: PointerEvent): void => {
+    overlay!.focus();
     overlay!.setPointerCapture(event.pointerId);
     const p = toNorm(event.clientX, event.clientY);
     const project = store.getState();
 
-    const ordered = [
-      ...project.zones.filter((z) => z.id === selectedZoneId),
-      ...project.zones.filter((z) => z.id !== selectedZoneId),
-    ];
-
-    for (const zone of ordered) {
+    for (const zone of orderedZones(project.zones)) {
+      if (!zone.visible) continue;
       const cornerIndex = hitCorner(p, zone);
       if (cornerIndex !== null) {
-        setSelected(zone.id);
+        setSelected(zone.id, cornerIndex);
         drag = { kind: 'corner', zoneId: zone.id, cornerIndex };
+        return;
+      }
+    }
+
+    for (const zone of orderedZones(project.zones)) {
+      if (!zone.visible) continue;
+      const edgeIndex = hitEdge(p, zone);
+      if (edgeIndex !== null) {
+        setSelected(zone.id, null);
+        drag = {
+          kind: 'edge',
+          zoneId: zone.id,
+          edgeIndex,
+          origin: p,
+          startCorners: cloneCorners(zone.corners),
+        };
         return;
       }
     }
@@ -178,7 +298,24 @@ export function mountCanvasEditor(
     const hit = [...project.zones]
       .filter((z) => z.visible && pointInQuad(p, z.corners))
       .sort((a, b) => b.zIndex - a.zIndex)[0];
-    setSelected(hit?.id ?? selectedZoneId);
+
+    if (hit) {
+      setSelected(hit.id, null);
+      const startCorners = cloneCorners(hit.corners);
+      if (event.shiftKey) {
+        drag = {
+          kind: 'scale',
+          zoneId: hit.id,
+          origin: p,
+          startCorners,
+          center: centroid(startCorners),
+        };
+      } else {
+        drag = { kind: 'move', zoneId: hit.id, origin: p, startCorners };
+      }
+      return;
+    }
+
     drag = null;
   };
 
@@ -189,11 +326,48 @@ export function mountCanvasEditor(
     const zone = store.getState().zones.find((z) => z.id === active.zoneId);
     if (!zone) return;
 
-    const nextCorners = zone.corners.map((c) => ({ ...c })) as [Vec2, Vec2, Vec2, Vec2];
-    nextCorners[active.cornerIndex] = p;
-    if (!isConvexQuad(nextCorners)) return;
+    if (active.kind === 'corner') {
+      const next = cloneCorners(zone.corners);
+      next[active.cornerIndex] = p;
+      tryCommitCorners(store, zone.id, next);
+      return;
+    }
 
-    store.updateZone(zone.id, { corners: nextCorners });
+    if (active.kind === 'edge') {
+      const dx = p.x - active.origin.x;
+      const dy = p.y - active.origin.y;
+      const next = cloneCorners(active.startCorners);
+      const i0 = active.edgeIndex;
+      const i1 = (active.edgeIndex + 1) % 4;
+      next[i0] = {
+        x: clamp01(active.startCorners[i0]!.x + dx),
+        y: clamp01(active.startCorners[i0]!.y + dy),
+      };
+      next[i1] = {
+        x: clamp01(active.startCorners[i1]!.x + dx),
+        y: clamp01(active.startCorners[i1]!.y + dy),
+      };
+      tryCommitCorners(store, zone.id, next);
+      return;
+    }
+
+    if (active.kind === 'move') {
+      const dx = p.x - active.origin.x;
+      const dy = p.y - active.origin.y;
+      tryCommitCorners(store, zone.id, translateCorners(active.startCorners, dx, dy));
+      return;
+    }
+
+    if (active.kind === 'scale') {
+      const startDist = Math.hypot(
+        active.origin.x - active.center.x,
+        active.origin.y - active.center.y,
+      );
+      const currDist = Math.hypot(p.x - active.center.x, p.y - active.center.y);
+      if (startDist < 1e-6) return;
+      const scale = Math.min(4, Math.max(0.15, currDist / startDist));
+      tryCommitCorners(store, zone.id, scaleCorners(active.startCorners, active.center, scale));
+    }
   };
 
   const onPointerUp = (event: PointerEvent): void => {
@@ -203,15 +377,58 @@ export function mountCanvasEditor(
     drag = null;
   };
 
+  const onDblClick = (event: MouseEvent): void => {
+    const p = toNorm(event.clientX, event.clientY);
+    const project = store.getState();
+    const onZone = project.zones.some((z) => z.visible && pointInQuad(p, z.corners));
+    if (onZone) return;
+    for (const zone of project.zones) {
+      if (hitCorner(p, zone) !== null || hitEdge(p, zone) !== null) return;
+    }
+    const zone = store.addZone();
+    setSelected(zone.id, null);
+  };
+
+  const onKeyDown = (event: KeyboardEvent): void => {
+    if (!selectedZoneId) return;
+    const keys = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+    if (!keys.includes(event.key)) return;
+    event.preventDefault();
+
+    const zone = store.getState().zones.find((z) => z.id === selectedZoneId);
+    if (!zone) return;
+
+    const step = pixelStep(event.shiftKey);
+    let dx = 0;
+    let dy = 0;
+    if (event.key === 'ArrowLeft') dx = -step.x;
+    if (event.key === 'ArrowRight') dx = step.x;
+    if (event.key === 'ArrowUp') dy = -step.y;
+    if (event.key === 'ArrowDown') dy = step.y;
+
+    if (selectedCornerIndex !== null) {
+      const next = cloneCorners(zone.corners);
+      const c = next[selectedCornerIndex]!;
+      next[selectedCornerIndex] = { x: clamp01(c.x + dx), y: clamp01(c.y + dy) };
+      tryCommitCorners(store, zone.id, next);
+      return;
+    }
+
+    tryCommitCorners(store, zone.id, translateCorners(cloneCorners(zone.corners), dx, dy));
+  };
+
   overlay.addEventListener('pointerdown', onPointerDown);
   overlay.addEventListener('pointermove', onPointerMove);
   overlay.addEventListener('pointerup', onPointerUp);
   overlay.addEventListener('pointercancel', onPointerUp);
+  overlay.addEventListener('dblclick', onDblClick);
+  overlay.addEventListener('keydown', onKeyDown);
 
   const unsub = store.subscribe((project) => {
     renderer.setZones(project.zones);
     if (selectedZoneId && !project.zones.some((z) => z.id === selectedZoneId)) {
       selectedZoneId = project.zones[0]?.id ?? null;
+      selectedCornerIndex = null;
     }
     drawOverlay();
   });
@@ -231,10 +448,12 @@ export function mountCanvasEditor(
       overlay!.removeEventListener('pointermove', onPointerMove);
       overlay!.removeEventListener('pointerup', onPointerUp);
       overlay!.removeEventListener('pointercancel', onPointerUp);
+      overlay!.removeEventListener('dblclick', onDblClick);
+      overlay!.removeEventListener('keydown', onKeyDown);
       renderer.stop();
     },
     setSelectedZoneId: (id) => {
-      setSelected(id);
+      setSelected(id, null);
     },
     getSelectedZoneId: () => selectedZoneId,
   };
