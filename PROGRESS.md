@@ -17,7 +17,7 @@ Living tracker for building the local web projection-mapping app from `lazy-ligh
 | Phase | Name | Status | Notes |
 |-------|------|--------|-------|
 | 0 | Repo bootstrap & public hygiene | ✅ done | Spec + tracker + `.gitignore` on GitHub |
-| 1 | Scaffold, state, save/load | ⬜ todo | Vite + TS; in-memory store; localStorage + JSON |
+| 1 | Scaffold, state, save/load | ✅ done | Vite + TS; `ProjectStore`; auto localStorage; JSON export/import; zone add/rename/dup/delete |
 | 2 | WebGL homography + test pattern | ⬜ todo | Single zone; verify extreme trapezoid (no affine seam) |
 | 3 | Editor canvas interactions | ⬜ todo | Select, handles, move/scale, add/delete, keyboard nudge |
 | 4 | Effects library + source panel | ⬜ todo | All 8 shaders; color/speed/params |
@@ -28,6 +28,15 @@ Living tracker for building the local web projection-mapping app from `lazy-ligh
 | 9 | Polish + README | ⬜ todo | Subdivide, test/white aids, projector setup notes |
 
 Status legend: `⬜ todo` · `🚧 in progress` · `✅ done` · `⛔ blocked`
+
+## Phase 1 notes (2026-07-19)
+
+- Package: `lazy-mapper` (Vite 8 + TypeScript)
+- Domain: `src/domain/types.ts`, `src/domain/factory.ts`
+- State: `src/state/store.ts` (subscribe + mutations, auto-persists)
+- Persistence: `src/state/persistence.ts` — serializes media as filename + `missing: true` (no object URLs in JSON)
+- UI: minimal shell to exercise round-trips (`src/ui/shell.ts`)
+- Verify: `npm run build` passes; use `npm run dev` for manual save/export/import checks
 
 ## How to update this doc
 
@@ -49,6 +58,12 @@ From the spec — mark when verified:
 - [ ] `B` blacks out output instantly; project survives reload via localStorage; JSON export/import round-trips
 - [ ] `npm run build` produces a static bundle that works via `npx serve`
 
+### Phase 1 slice (partial acceptance)
+
+- [x] Project survives reload via localStorage (auto-save on edits)
+- [x] JSON export/import round-trips (media refs → missing state)
+- [x] `npm run build` produces a static bundle
+
 ## Privacy (public repo)
 
 Do **not** commit:
@@ -62,4 +77,4 @@ Safe to commit: source, docs, the clean-room spec, this tracker, public README.
 
 ## Blockers / open questions
 
-_None for Phase 0. Add items here as they appear during implementation._
+_None. Ready for Phase 2 (WebGL homography)._

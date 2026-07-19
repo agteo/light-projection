@@ -1,0 +1,187 @@
+:root {
+  color-scheme: dark;
+  --bg: #12141a;
+  --panel: #1a1e27;
+  --border: #2c3340;
+  --text: #e8ecf1;
+  --muted: #9aa3b2;
+  --accent: #6db3ff;
+  --danger: #ff6b6b;
+  --ok: #7dcea0;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  line-height: 1.45;
+  font-weight: 400;
+  color: var(--text);
+  background: radial-gradient(1200px 600px at 10% -10%, #1d2740, transparent),
+    radial-gradient(900px 500px at 100% 0%, #243028, transparent), var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+button,
+input,
+.file-btn {
+  font: inherit;
+}
+
+.shell {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+}
+
+.tag {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 220px;
+}
+
+.field span {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.field input,
+.zone-name {
+  background: #0e1117;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 0.55rem 0.7rem;
+}
+
+.panel {
+  background: color-mix(in srgb, var(--panel) 92%, black);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem 1.15rem;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+button,
+.file-btn {
+  background: #243044;
+  color: var(--text);
+  border: 1px solid #3a465c;
+  border-radius: 6px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+}
+
+button:hover,
+.file-btn:hover {
+  border-color: var(--accent);
+}
+
+button.danger,
+.zone-row .danger {
+  background: #3a2226;
+  border-color: #6a3a42;
+}
+
+.file-btn {
+  display: inline-flex;
+  align-items: center;
+}
+
+.zone-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.zone-row {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(10rem, 1.4fr) auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.zone-row .meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status {
+  margin: 0.9rem 0 0.6rem;
+  min-height: 1.3em;
+  color: var(--ok);
+  font-size: 0.9rem;
+}
+
+.status[data-kind='err'] {
+  color: var(--danger);
+}
+
+.json-preview {
+  margin: 0;
+  padding: 0.85rem;
+  overflow: auto;
+  max-height: 280px;
+  background: #0b0d12;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.8rem;
+  color: #c9d4e3;
+}
+
+@media (max-width: 640px) {
+  .zone-row {
+    grid-template-columns: 1fr;
+  }
+}

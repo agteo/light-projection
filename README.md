@@ -6,11 +6,11 @@ Clean-room implementation inspired by the Lazy Lighting workflow — no copied a
 
 ## Status
 
-Early bootstrap. See [PROGRESS.md](./PROGRESS.md) for phased build status and [lazy-lighting-clone-spec.md](./lazy-lighting-clone-spec.md) for the full product spec.
+**Phase 1 complete** — project state store with `localStorage` + JSON export/import. See [PROGRESS.md](./PROGRESS.md) for phased build status and [lazy-lighting-clone-spec.md](./lazy-lighting-clone-spec.md) for the full product spec.
 
 **Stack (locked):** Vanilla TypeScript · Vite · WebGL2 · `BroadcastChannel` editor↔output sync.
 
-## Quick start (once Phase 1 lands)
+## Quick start
 
 ```bash
 npm install
@@ -22,6 +22,7 @@ npm run build
 npx serve dist
 ```
 
+In the Phase 1 shell you can rename the project, add/duplicate/delete zones, and export/import JSON. Edits auto-save to `localStorage`.
 ## Projector setup (summary)
 
 1. Open the editor in Chrome/Edge on the laptop.
