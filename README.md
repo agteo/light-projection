@@ -6,7 +6,7 @@ Clean-room implementation inspired by the Lazy Lighting workflow — no copied a
 
 ## Status
 
-**Phase 4 complete** — 8 GLSL effects + source panel. See [PROGRESS.md](./PROGRESS.md) for phased build status and [lazy-lighting-clone-spec.md](./lazy-lighting-clone-spec.md) for the full product spec.
+**Phase 5 complete** — image/video sources with blend, opacity, and feather. See [PROGRESS.md](./PROGRESS.md) for phased build status and [lazy-lighting-clone-spec.md](./lazy-lighting-clone-spec.md) for the full product spec.
 
 **Stack (locked):** Vanilla TypeScript · Vite · WebGL2 · `BroadcastChannel` editor↔output sync.
 
@@ -22,7 +22,7 @@ npm run build
 npx serve dist
 ```
 
-Use **Live** mode and the Source panel to pick effects (pulse, gradient, bars, plasma, rings, strobe, sparkle, spectrum). Test pattern / White are alignment aids. Drag corners/edges to warp zones; arrow keys nudge.
+Use **Live** mode and the Source panel for effects or imported image/video (cover/contain/stretch). Adjust opacity, feather, and blend; reorder zones with ↑↓. Test pattern / White are alignment aids.
 ## Projector setup (summary)
 
 1. Open the editor in Chrome/Edge on the laptop.

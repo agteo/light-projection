@@ -1,5 +1,6 @@
-import type { Zone } from '../domain/types';
+import type { BlendMode, Zone } from '../domain/types';
 import { effectShaderId, parseHexColor } from '../effects/registry';
+import { getMediaElement } from '../media/loader';
 import { isConvexQuad, quadToUnitSquare, type Mat3 } from '../math/homography';
 import { WARP_FRAG, WARP_VERT } from './shaders';
 
@@ -46,6 +47,13 @@ function requireUniform(gl: WebGL2RenderingContext, program: WebGLProgram, name:
 
 export type RenderMode = 'live' | 'test-pattern' | 'white';
 
+interface MediaTex {
+  texture: WebGLTexture;
+  url: string;
+  width: number;
+  height: number;
+}
+
 export class WebGLRenderer {
   readonly canvas: HTMLCanvasElement;
   private readonly gl: WebGL2RenderingContext;
@@ -53,26 +61,32 @@ export class WebGLRenderer {
   private readonly vao: WebGLVertexArrayObject;
   private readonly vbo: WebGLBuffer;
   private readonly spectrumTex: WebGLTexture;
+  private readonly placeholderTex: WebGLTexture;
   private readonly spectrumData = new Uint8Array(256);
+  private readonly mediaTextures = new Map<string, MediaTex>();
   private readonly locPos: number;
   private readonly locHinv: WebGLUniformLocation;
   private readonly locTime: WebGLUniformLocation;
   private readonly locOpacity: WebGLUniformLocation;
   private readonly locSpeed: WebGLUniformLocation;
   private readonly locAudio: WebGLUniformLocation;
+  private readonly locFeather: WebGLUniformLocation;
   private readonly locColor1: WebGLUniformLocation;
   private readonly locColor2: WebGLUniformLocation;
   private readonly locParams: WebGLUniformLocation;
   private readonly locEffectId: WebGLUniformLocation;
+  private readonly locFitMode: WebGLUniformLocation;
+  private readonly locMediaSize: WebGLUniformLocation;
   private readonly locSpectrum: WebGLUniformLocation;
+  private readonly locMedia: WebGLUniformLocation;
   private mode: RenderMode = 'live';
   private raf = 0;
   private startTime = performance.now();
   private zones: Zone[] = [];
   private running = false;
-  /** External audio level 0..1 (Phase 7). */
+  private cssWidth = 1;
+  private cssHeight = 1;
   private audioLevel = 0;
-  /** Optional spectrum bins 0..1 (Phase 7). */
   private spectrumBins: Float32Array | null = null;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -92,11 +106,15 @@ export class WebGLRenderer {
     this.locOpacity = requireUniform(gl, this.program, 'u_opacity');
     this.locSpeed = requireUniform(gl, this.program, 'u_speed');
     this.locAudio = requireUniform(gl, this.program, 'u_audio');
+    this.locFeather = requireUniform(gl, this.program, 'u_feather');
     this.locColor1 = requireUniform(gl, this.program, 'u_color1');
     this.locColor2 = requireUniform(gl, this.program, 'u_color2');
     this.locParams = requireUniform(gl, this.program, 'u_params');
     this.locEffectId = requireUniform(gl, this.program, 'u_effectId');
+    this.locFitMode = requireUniform(gl, this.program, 'u_fitMode');
+    this.locMediaSize = requireUniform(gl, this.program, 'u_mediaSize');
     this.locSpectrum = requireUniform(gl, this.program, 'u_spectrum');
+    this.locMedia = requireUniform(gl, this.program, 'u_media');
 
     const vao = gl.createVertexArray();
     const vbo = gl.createBuffer();
@@ -111,19 +129,19 @@ export class WebGLRenderer {
     gl.vertexAttribPointer(this.locPos, 2, gl.FLOAT, false, 0, 0);
     gl.bindVertexArray(null);
 
-    const spectrumTex = gl.createTexture();
-    if (!spectrumTex) throw new Error('Failed to create spectrum texture');
-    this.spectrumTex = spectrumTex;
-    gl.bindTexture(gl.TEXTURE_2D, spectrumTex);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    this.spectrumTex = createEmptyTexture(gl);
+    gl.bindTexture(gl.TEXTURE_2D, this.spectrumTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, 256, 1, 0, gl.RED, gl.UNSIGNED_BYTE, this.spectrumData);
+
+    this.placeholderTex = createEmptyTexture(gl);
+    gl.bindTexture(gl.TEXTURE_2D, this.placeholderTex);
+    const px = new Uint8Array([40, 40, 48, 255]);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, px);
 
     gl.disable(gl.DEPTH_TEST);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
   }
 
   setMode(mode: RenderMode): void {
@@ -143,6 +161,8 @@ export class WebGLRenderer {
   }
 
   resize(cssWidth: number, cssHeight: number): void {
+    this.cssWidth = Math.max(1, cssWidth);
+    this.cssHeight = Math.max(1, cssHeight);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const w = Math.max(1, Math.floor(cssWidth * dpr));
     const h = Math.max(1, Math.floor(cssHeight * dpr));
@@ -175,7 +195,10 @@ export class WebGLRenderer {
   dispose(): void {
     this.stop();
     const gl = this.gl;
+    for (const entry of this.mediaTextures.values()) gl.deleteTexture(entry.texture);
+    this.mediaTextures.clear();
     gl.deleteTexture(this.spectrumTex);
+    gl.deleteTexture(this.placeholderTex);
     gl.deleteBuffer(this.vbo);
     gl.deleteVertexArray(this.vao);
     gl.deleteProgram(this.program);
@@ -189,7 +212,6 @@ export class WebGLRenderer {
         const idx = Math.floor((i / 256) * this.spectrumBins.length);
         v = this.spectrumBins[idx] ?? 0;
       } else {
-        // Demo spectrum until mic analyser lands in Phase 7
         const t = time * 2.2;
         v =
           0.15 +
@@ -203,6 +225,54 @@ export class WebGLRenderer {
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 256, 1, gl.RED, gl.UNSIGNED_BYTE, this.spectrumData);
   }
 
+  private ensureMediaTexture(url: string): MediaTex | null {
+    const gl = this.gl;
+    const element = getMediaElement(url);
+    if (!element) return null;
+
+    let entry = this.mediaTextures.get(url);
+    if (!entry) {
+      const texture = createEmptyTexture(gl);
+      entry = { texture, url, width: 1, height: 1 };
+      this.mediaTextures.set(url, entry);
+    }
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, entry.texture);
+
+    if (element instanceof HTMLVideoElement) {
+      if (element.readyState < 2) return entry;
+      entry.width = element.videoWidth || 1;
+      entry.height = element.videoHeight || 1;
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, element);
+    } else {
+      if (!element.complete || element.naturalWidth === 0) return entry;
+      entry.width = element.naturalWidth;
+      entry.height = element.naturalHeight;
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, element);
+    }
+    return entry;
+  }
+
+  private applyBlendMode(mode: BlendMode): void {
+    const gl = this.gl;
+    switch (mode) {
+      case 'add':
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
+        break;
+      case 'multiply':
+        gl.blendFuncSeparate(gl.DST_COLOR, gl.ONE_MINUS_SRC_ALPHA, gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+      case 'screen':
+        gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_COLOR, gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+      case 'normal':
+      default:
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        break;
+    }
+  }
+
   private renderFrame(): void {
     const gl = this.gl;
     const t = (performance.now() - this.startTime) / 1000;
@@ -213,6 +283,7 @@ export class WebGLRenderer {
     gl.useProgram(this.program);
     this.updateSpectrumTexture(t);
     gl.uniform1i(this.locSpectrum, 0);
+    gl.uniform1i(this.locMedia, 1);
     gl.uniform1f(this.locTime, t);
 
     const sorted = [...this.zones]
@@ -222,6 +293,9 @@ export class WebGLRenderer {
     for (const zone of sorted) {
       this.drawZone(zone);
     }
+
+    // Reset to normal for overlay safety
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
   }
 
   private drawZone(zone: Zone): void {
@@ -250,9 +324,13 @@ export class WebGLRenderer {
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vbo);
     gl.bufferSubData(gl.ARRAY_BUFFER, 0, verts);
 
+    this.applyBlendMode(this.mode === 'live' ? zone.blendMode : 'normal');
+
+    const featherUv = zone.feather / Math.max(1, Math.min(this.cssWidth, this.cssHeight));
     gl.uniformMatrix3fv(this.locHinv, false, mat3ToWebGL(hInv));
     gl.uniform1f(this.locOpacity, zone.opacity);
     gl.uniform1f(this.locAudio, this.audioLevel);
+    gl.uniform1f(this.locFeather, featherUv);
 
     const look = resolveZoneLook(zone, this.mode);
     gl.uniform1i(this.locEffectId, look.effectId);
@@ -260,6 +338,21 @@ export class WebGLRenderer {
     gl.uniform3f(this.locColor1, look.color1[0], look.color1[1], look.color1[2]);
     gl.uniform3f(this.locColor2, look.color2[0], look.color2[1], look.color2[2]);
     gl.uniform4f(this.locParams, look.params[0], look.params[1], look.params[2], look.params[3]);
+    gl.uniform1i(this.locFitMode, look.fitMode);
+    gl.uniform2f(this.locMediaSize, look.mediaWidth, look.mediaHeight);
+
+    gl.activeTexture(gl.TEXTURE1);
+    if (look.mediaUrl) {
+      const media = this.ensureMediaTexture(look.mediaUrl);
+      if (media) {
+        gl.bindTexture(gl.TEXTURE_2D, media.texture);
+        gl.uniform2f(this.locMediaSize, media.width, media.height);
+      } else {
+        gl.bindTexture(gl.TEXTURE_2D, this.placeholderTex);
+      }
+    } else {
+      gl.bindTexture(gl.TEXTURE_2D, this.placeholderTex);
+    }
 
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     gl.bindVertexArray(null);
@@ -272,58 +365,69 @@ interface ZoneLook {
   color1: [number, number, number];
   color2: [number, number, number];
   params: [number, number, number, number];
+  fitMode: number;
+  mediaUrl: string | null;
+  mediaWidth: number;
+  mediaHeight: number;
 }
 
 function resolveZoneLook(zone: Zone, mode: RenderMode): ZoneLook {
-  if (mode === 'test-pattern') {
-    return {
-      effectId: 0,
-      speed: 1,
-      color1: [1, 1, 1],
-      color2: [1, 1, 1],
-      params: [0, 0, 0, 0],
-    };
-  }
-  if (mode === 'white') {
-    return {
-      effectId: 9,
-      speed: 1,
-      color1: [1, 1, 1],
-      color2: [1, 1, 1],
-      params: [0, 0, 0, 0],
-    };
-  }
+  const base: ZoneLook = {
+    effectId: 0,
+    speed: 1,
+    color1: [1, 1, 1],
+    color2: [1, 1, 1],
+    params: [0, 0, 0, 0],
+    fitMode: 2,
+    mediaUrl: null,
+    mediaWidth: 1,
+    mediaHeight: 1,
+  };
+
+  if (mode === 'test-pattern') return { ...base, effectId: 0 };
+  if (mode === 'white') return { ...base, effectId: 9 };
 
   const src = zone.source;
   if (src.kind === 'solid') {
     return {
+      ...base,
       effectId: 10,
-      speed: 1,
       color1: parseHexColor(src.color),
       color2: parseHexColor(src.color),
-      params: [0, 0, 0, 0],
     };
   }
 
   if (src.kind === 'effect') {
-    const params = packParams(src.effectId, src.params);
     return {
+      ...base,
       effectId: effectShaderId(src.effectId),
       speed: src.speed,
       color1: parseHexColor(src.color1),
       color2: parseHexColor(src.color2),
-      params,
+      params: packParams(src.effectId, src.params),
     };
   }
 
-  // Image/video: placeholder tint until Phase 5
-  return {
-    effectId: 10,
-    speed: 1,
-    color1: [0.2, 0.2, 0.25],
-    color2: [0.2, 0.2, 0.25],
-    params: [0, 0, 0, 0],
-  };
+  if (src.kind === 'image' || src.kind === 'video') {
+    const missing = src.missing || !src.objectUrl;
+    if (missing) {
+      return { ...base, effectId: 12 };
+    }
+    return {
+      ...base,
+      effectId: 11,
+      fitMode: fitModeId(src.fit),
+      mediaUrl: src.objectUrl,
+    };
+  }
+
+  return { ...base, effectId: 12 };
+}
+
+function fitModeId(fit: 'cover' | 'contain' | 'stretch'): number {
+  if (fit === 'cover') return 0;
+  if (fit === 'contain') return 1;
+  return 2;
 }
 
 function packParams(effectId: string, params: Record<string, number>): [number, number, number, number] {
@@ -347,6 +451,17 @@ function packParams(effectId: string, params: Record<string, number>): [number, 
     default:
       return [0, 0, 0, 0];
   }
+}
+
+function createEmptyTexture(gl: WebGL2RenderingContext): WebGLTexture {
+  const texture = gl.createTexture();
+  if (!texture) throw new Error('Failed to create texture');
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  return texture;
 }
 
 function mat3ToWebGL(m: Mat3): Float32Array {

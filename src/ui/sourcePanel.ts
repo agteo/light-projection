@@ -6,13 +6,22 @@ import {
   type EffectParamDef,
 } from '../effects/registry';
 import { defaultEffectSource } from '../domain/factory';
-import type { SourceAssignment, Zone } from '../domain/types';
+import type { BlendMode, SourceAssignment, Zone } from '../domain/types';
+import {
+  ensureVideoPlaying,
+  getMediaElement,
+  loadImageFromFile,
+  loadVideoFromFile,
+  revokeObjectUrl,
+} from '../media/loader';
 import type { ProjectStore } from '../state/store';
 
 export interface SourcePanelHandle {
   destroy: () => void;
   setZoneId: (zoneId: string | null) => void;
 }
+
+const BLEND_MODES: BlendMode[] = ['normal', 'add', 'multiply', 'screen'];
 
 export function mountSourcePanel(
   host: HTMLElement,
@@ -31,6 +40,8 @@ export function mountSourcePanel(
         <select id="source-kind">
           <option value="effect">Effect</option>
           <option value="solid">Solid color</option>
+          <option value="image">Image</option>
+          <option value="video">Video</option>
         </select>
       </label>
 
@@ -66,6 +77,50 @@ export function mountSourcePanel(
           <input type="color" id="solid-color" value="#ffffff" />
         </label>
       </div>
+
+      <div id="media-fields" class="source-block hidden">
+        <p id="media-status" class="muted"></p>
+        <label class="file-btn">
+          Choose file
+          <input type="file" id="media-file" hidden />
+        </label>
+        <label class="field">
+          <span>Fit</span>
+          <select id="media-fit">
+            <option value="cover">Cover</option>
+            <option value="contain">Contain</option>
+            <option value="stretch">Stretch</option>
+          </select>
+        </label>
+        <div id="video-opts" class="field-row hidden">
+          <label class="check-field">
+            <input type="checkbox" id="video-loop" checked />
+            <span>Loop</span>
+          </label>
+          <label class="check-field">
+            <input type="checkbox" id="video-muted" checked />
+            <span>Muted</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="source-block compositing">
+        <h3 class="subhead">Compositing</h3>
+        <div class="field-row">
+          <label class="field">
+            <span>Opacity</span>
+            <input type="range" id="opacity" min="0" max="1" step="0.01" />
+          </label>
+          <label class="field">
+            <span>Feather (px)</span>
+            <input type="range" id="feather" min="0" max="80" step="1" />
+          </label>
+          <label class="field">
+            <span>Blend</span>
+            <select id="blend-mode"></select>
+          </label>
+        </div>
+      </div>
     </div>
   `;
 
@@ -75,6 +130,7 @@ export function mountSourcePanel(
   const kindSelect = host.querySelector<HTMLSelectElement>('#source-kind')!;
   const effectFields = host.querySelector('#effect-fields')!;
   const solidFields = host.querySelector('#solid-fields')!;
+  const mediaFields = host.querySelector('#media-fields')!;
   const effectSelect = host.querySelector<HTMLSelectElement>('#effect-id')!;
   const effectDesc = host.querySelector('#effect-desc')!;
   const color1 = host.querySelector<HTMLInputElement>('#color1')!;
@@ -83,12 +139,27 @@ export function mountSourcePanel(
   const paramsHost = host.querySelector('#effect-params')!;
   const strobeWarning = host.querySelector('#strobe-warning')!;
   const solidColor = host.querySelector<HTMLInputElement>('#solid-color')!;
+  const mediaStatus = host.querySelector('#media-status')!;
+  const mediaFile = host.querySelector<HTMLInputElement>('#media-file')!;
+  const mediaFit = host.querySelector<HTMLSelectElement>('#media-fit')!;
+  const videoOpts = host.querySelector('#video-opts')!;
+  const videoLoop = host.querySelector<HTMLInputElement>('#video-loop')!;
+  const videoMuted = host.querySelector<HTMLInputElement>('#video-muted')!;
+  const opacity = host.querySelector<HTMLInputElement>('#opacity')!;
+  const feather = host.querySelector<HTMLInputElement>('#feather')!;
+  const blendMode = host.querySelector<HTMLSelectElement>('#blend-mode')!;
 
   for (const effect of EFFECTS) {
     const opt = document.createElement('option');
     opt.value = effect.id;
     opt.textContent = effect.label;
     effectSelect.appendChild(opt);
+  }
+  for (const mode of BLEND_MODES) {
+    const opt = document.createElement('option');
+    opt.value = mode;
+    opt.textContent = mode;
+    blendMode.appendChild(opt);
   }
 
   let boundZoneId: string | null = null;
@@ -103,6 +174,14 @@ export function mountSourcePanel(
   const patchSource = (next: SourceAssignment): void => {
     const zone = selectedZone();
     if (!zone) return;
+    const prev = zone.source;
+    if (
+      (prev.kind === 'image' || prev.kind === 'video') &&
+      prev.objectUrl &&
+      (next.kind !== prev.kind || ('objectUrl' in next && next.objectUrl !== prev.objectUrl))
+    ) {
+      revokeObjectUrl(prev.objectUrl);
+    }
     store.updateZone(zone.id, { source: next });
   };
 
@@ -160,28 +239,42 @@ export function mountSourcePanel(
     formEl.classList.remove('hidden');
     zoneLabel.textContent = zone.name;
 
-    const kind = zone.source.kind === 'solid' ? 'solid' : 'effect';
-    kindSelect.value = kind;
+    const kind = zone.source.kind;
+    kindSelect.value = kind === 'image' || kind === 'video' || kind === 'solid' || kind === 'effect' ? kind : 'effect';
     effectFields.classList.toggle('hidden', kind !== 'effect');
     solidFields.classList.toggle('hidden', kind !== 'solid');
+    mediaFields.classList.toggle('hidden', kind !== 'image' && kind !== 'video');
+    videoOpts.classList.toggle('hidden', kind !== 'video');
+    mediaFile.accept = kind === 'video' ? 'video/*' : 'image/*';
+
+    opacity.value = String(zone.opacity);
+    feather.value = String(zone.feather);
+    blendMode.value = zone.blendMode;
 
     if (zone.source.kind === 'solid') {
       solidColor.value = normalizeColor(zone.source.color);
-    } else {
-      const src =
-        zone.source.kind === 'effect' ? zone.source : (defaultEffectSource() as Extract<SourceAssignment, { kind: 'effect' }>);
-      // If image/video somehow selected, coerce display to effect defaults without writing yet
-      if (zone.source.kind !== 'effect') {
-        suppress = false;
-        patchSource(defaultEffectSource());
-        return;
-      }
+    } else if (zone.source.kind === 'effect') {
+      const src = zone.source;
       effectSelect.value = EFFECT_BY_ID[src.effectId] ? src.effectId : DEFAULT_EFFECT_ID;
       effectDesc.textContent = EFFECT_BY_ID[effectSelect.value]?.description ?? '';
       color1.value = normalizeColor(src.color1);
       color2.value = normalizeColor(src.color2);
       speed.value = String(src.speed);
       renderParamControls(src.effectId, src.params);
+    } else if (zone.source.kind === 'image' || zone.source.kind === 'video') {
+      const src = zone.source;
+      mediaFit.value = src.fit;
+      if (src.kind === 'video') {
+        videoLoop.checked = src.loop;
+        videoMuted.checked = src.muted;
+      }
+      if (src.missing || !src.objectUrl) {
+        mediaStatus.textContent = `Missing media: re-import “${src.fileName}” (object URLs don’t persist).`;
+        mediaStatus.classList.add('warn-inline');
+      } else {
+        mediaStatus.textContent = `Loaded: ${src.fileName}`;
+        mediaStatus.classList.remove('warn-inline');
+      }
     }
     suppress = false;
   };
@@ -192,6 +285,24 @@ export function mountSourcePanel(
     if (!zone) return;
     if (kindSelect.value === 'solid') {
       patchSource({ kind: 'solid', color: '#ffffff' });
+    } else if (kindSelect.value === 'image') {
+      patchSource({
+        kind: 'image',
+        objectUrl: '',
+        fileName: '(choose a file)',
+        fit: 'cover',
+        missing: true,
+      });
+    } else if (kindSelect.value === 'video') {
+      patchSource({
+        kind: 'video',
+        objectUrl: '',
+        fileName: '(choose a file)',
+        fit: 'cover',
+        loop: true,
+        muted: true,
+        missing: true,
+      });
     } else {
       patchSource(defaultEffectSource());
     }
@@ -232,6 +343,99 @@ export function mountSourcePanel(
     const zone = selectedZone();
     if (!zone || zone.source.kind !== 'solid') return;
     patchSource({ kind: 'solid', color: solidColor.value });
+  });
+
+  mediaFit.addEventListener('change', () => {
+    if (suppress) return;
+    const zone = selectedZone();
+    if (!zone || (zone.source.kind !== 'image' && zone.source.kind !== 'video')) return;
+    patchSource({ ...zone.source, fit: mediaFit.value as 'cover' | 'contain' | 'stretch' });
+  });
+
+  videoLoop.addEventListener('change', () => {
+    if (suppress) return;
+    const zone = selectedZone();
+    if (!zone || zone.source.kind !== 'video') return;
+    const url = zone.source.objectUrl;
+    patchSource({ ...zone.source, loop: videoLoop.checked });
+    if (url) {
+      const element = getMediaElement(url);
+      if (element instanceof HTMLVideoElement) element.loop = videoLoop.checked;
+    }
+  });
+
+  videoMuted.addEventListener('change', () => {
+    if (suppress) return;
+    const zone = selectedZone();
+    if (!zone || zone.source.kind !== 'video') return;
+    const url = zone.source.objectUrl;
+    patchSource({ ...zone.source, muted: videoMuted.checked });
+    if (url) {
+      const element = getMediaElement(url);
+      if (element instanceof HTMLVideoElement) {
+        element.muted = videoMuted.checked;
+        void ensureVideoPlaying(element);
+      }
+    }
+  });
+
+  mediaFile.addEventListener('change', async () => {
+    const file = mediaFile.files?.[0];
+    mediaFile.value = '';
+    if (!file) return;
+    const zone = selectedZone();
+    if (!zone) return;
+
+    try {
+      if (kindSelect.value === 'video' || zone.source.kind === 'video') {
+        const { url } = await loadVideoFromFile(file, {
+          loop: videoLoop.checked,
+          muted: videoMuted.checked,
+        });
+        patchSource({
+          kind: 'video',
+          objectUrl: url,
+          fileName: file.name,
+          fit: (mediaFit.value as 'cover' | 'contain' | 'stretch') || 'cover',
+          loop: videoLoop.checked,
+          muted: videoMuted.checked,
+          missing: false,
+        });
+      } else {
+        const { url } = await loadImageFromFile(file);
+        patchSource({
+          kind: 'image',
+          objectUrl: url,
+          fileName: file.name,
+          fit: (mediaFit.value as 'cover' | 'contain' | 'stretch') || 'cover',
+          missing: false,
+        });
+      }
+    } catch (err) {
+      mediaStatus.textContent = err instanceof Error ? err.message : 'Failed to load media';
+      mediaStatus.classList.add('warn-inline');
+    }
+  });
+
+  opacity.addEventListener('input', () => {
+    if (suppress) return;
+    const zone = selectedZone();
+    if (!zone) return;
+    store.updateZone(zone.id, { opacity: Number(opacity.value) });
+  });
+
+  feather.addEventListener('input', () => {
+    if (suppress) return;
+    const zone = selectedZone();
+    if (!zone) return;
+    store.updateZone(zone.id, { feather: Number(feather.value) });
+  });
+
+  blendMode.addEventListener('change', () => {
+    if (suppress) return;
+    const zone = selectedZone();
+    if (!zone) return;
+    store.updateZone(zone.id, { blendMode: blendMode.value as BlendMode });
   });
 
   const unsub = store.subscribe(() => syncForm());

@@ -32,7 +32,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
       <header class="topbar">
         <div class="brand">
           <h1>Lazy Mapper</h1>
-          <p class="tag">Phase 4 — effects library + source panel</p>
+          <p class="tag">Phase 5 — media + compositing</p>
         </div>
         <label class="field name-field">
           <span>Project</span>
@@ -134,6 +134,8 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
         <button type="button" class="select-zone" data-select="${zone.id}" title="Select on canvas">●</button>
         <input type="text" class="zone-name" data-id="${zone.id}" value="${escapeAttr(zone.name)}" />
         <span class="meta">z${zone.zIndex} · ${sourceLabel(zone.source)}</span>
+        <button type="button" data-zdown="${zone.id}" title="Send backward">↓</button>
+        <button type="button" data-zup="${zone.id}" title="Bring forward">↑</button>
         <button type="button" data-dup="${zone.id}">Duplicate</button>
         <button type="button" class="danger" data-del="${zone.id}">Delete</button>
       `;
@@ -182,6 +184,16 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
       editor.setSelectedZoneId(target.dataset.select);
       sourcePanel.setZoneId(target.dataset.select);
       render();
+      return;
+    }
+    if (target.dataset.zup) {
+      store.nudgeZoneZ(target.dataset.zup, 1);
+      setStatus('Brought zone forward.');
+      return;
+    }
+    if (target.dataset.zdown) {
+      store.nudgeZoneZ(target.dataset.zdown, -1);
+      setStatus('Sent zone backward.');
       return;
     }
     if (target.dataset.dup) {
@@ -273,7 +285,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
 
   store.subscribe(render);
   render();
-  setStatus('Pick an effect in Source — try plasma, rings, strobe (capped), spectrum bars.');
+  setStatus('Import image/video in Source · tweak opacity, feather, blend · reorder with ↑↓.');
 }
 
 function escapeAttr(value: string): string {

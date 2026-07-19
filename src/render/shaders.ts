@@ -22,11 +22,15 @@ uniform float u_time;
 uniform float u_opacity;
 uniform float u_speed;
 uniform float u_audio; // 0..1 reactive level
+uniform float u_feather; // UV-space edge soft width
 uniform vec3 u_color1;
 uniform vec3 u_color2;
 uniform vec4 u_params; // effect-specific packed params
-uniform int u_effectId; // 0=test pattern, 1..8 effects, 9=solid white, 10=solid color (u_color1)
+uniform int u_effectId; // 0=test, 1..8 effects, 9=white, 10=solid, 11=media, 12=missing media
+uniform int u_fitMode; // 0=cover, 1=contain, 2=stretch
+uniform vec2 u_mediaSize; // pixels
 uniform sampler2D u_spectrum; // 1D spectrum in a 256x1 texture
+uniform sampler2D u_media;
 
 out vec4 outColor;
 
@@ -157,10 +161,38 @@ vec3 effectSpectrum(vec2 uv) {
   return mix(u_color1 * 0.1, u_color2, bar * gap);
 }
 
+vec2 mapMediaUv(vec2 uv) {
+  if (u_fitMode == 2) return uv; // stretch
+  float mediaAspect = max(u_mediaSize.x, 1.0) / max(u_mediaSize.y, 1.0);
+  vec2 img = vec2(mediaAspect, 1.0);
+  vec2 plane = vec2(1.0);
+  vec2 s = plane / img;
+  float scale = u_fitMode == 0 ? max(s.x, s.y) : min(s.x, s.y);
+  vec2 scaled = img * scale;
+  vec2 offset = (plane - scaled) * 0.5;
+  return (uv * plane - offset) / scaled;
+}
+
+vec4 sampleMedia(vec2 uv) {
+  vec2 coord = mapMediaUv(uv);
+  if (u_fitMode == 1 && (coord.x < 0.0 || coord.x > 1.0 || coord.y < 0.0 || coord.y > 1.0)) {
+    return vec4(0.0);
+  }
+  coord = clamp(coord, 0.0, 1.0);
+  // Flip Y: video/image textures are top-down in browser uploads with UNPACK_FLIP_Y
+  return texture(u_media, coord);
+}
+
+vec3 missingMedia(vec2 uv) {
+  float stripe = step(0.5, fract((uv.x + uv.y) * 8.0));
+  return mix(vec3(0.35, 0.08, 0.2), vec3(0.15, 0.05, 0.1), stripe);
+}
+
 vec3 shade(vec2 uv) {
   if (u_effectId == 0) return testPattern(uv);
   if (u_effectId == 9) return vec3(1.0);
   if (u_effectId == 10) return u_color1;
+  if (u_effectId == 12) return missingMedia(uv);
   if (u_effectId == 1) return effectSolidPulse(uv);
   if (u_effectId == 2) return effectGradientSweep(uv);
   if (u_effectId == 3) return effectScrollingBars(uv);
@@ -172,13 +204,29 @@ vec3 shade(vec2 uv) {
   return testPattern(uv);
 }
 
+float featherMask(vec2 uv) {
+  float soft = max(u_feather, 0.0);
+  if (soft < 1e-6) return 1.0;
+  float edge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+  return smoothstep(0.0, soft, edge);
+}
+
 void main() {
   vec3 uvh = u_Hinv * vec3(v_pos, 1.0);
   if (abs(uvh.z) < 1e-6) discard;
   vec2 uv = uvh.xy / uvh.z;
   if (uv.x < -0.001 || uv.x > 1.001 || uv.y < -0.001 || uv.y > 1.001) discard;
+  uv = clamp(uv, 0.0, 1.0);
 
-  vec3 color = shade(clamp(uv, 0.0, 1.0));
-  outColor = vec4(color, u_opacity);
+  vec4 color;
+  if (u_effectId == 11) {
+    color = sampleMedia(uv);
+  } else {
+    color = vec4(shade(uv), 1.0);
+  }
+
+  float alpha = color.a * u_opacity * featherMask(uv);
+  if (alpha < 0.001) discard;
+  outColor = vec4(color.rgb, alpha);
 }
 `;

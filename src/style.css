@@ -98,7 +98,7 @@ button.active {
 
 .zone-row {
   display: grid;
-  grid-template-columns: auto minmax(8rem, 1fr) minmax(10rem, 1.4fr) auto auto;
+  grid-template-columns: auto minmax(7rem, 1fr) minmax(8rem, 1.2fr) auto auto auto auto;
   gap: 0.5rem;
   align-items: center;
 }
@@ -313,6 +313,30 @@ button.danger,
   background: #3a2226;
   color: #ffc9c9;
   font-size: 0.85rem;
+}
+
+.warn-inline {
+  color: #ffc9c9 !important;
+}
+
+.subhead {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
+.compositing {
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border);
 }
 
 select,

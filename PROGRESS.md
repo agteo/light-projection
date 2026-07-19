@@ -2,7 +2,7 @@
 
 Living tracker for building the local web projection-mapping app from `lazy-lighting-clone-spec.md`.
 
-**Last updated:** 2026-07-19 (Phase 4)
+**Last updated:** 2026-07-19 (Phase 5)
 
 ## Locked decisions
 
@@ -21,13 +21,22 @@ Living tracker for building the local web projection-mapping app from `lazy-ligh
 | 2 | WebGL homography + test pattern | ✅ done | `quadToUnitSquare` + WebGL2 warp; procedural test pattern; corner drag with convexity guard |
 | 3 | Editor canvas interactions | ✅ done | Edge midpoints; move; Shift-scale; double-click add; arrow nudge (Shift=10px) |
 | 4 | Effects library + source panel | ✅ done | All 8 shaders; Live/Test/White; source panel with colors/speed/params; strobe safety |
-| 5 | Media + compositing | ⬜ todo | Image/video, blend, opacity, feather, zIndex |
+| 5 | Media + compositing | ✅ done | Image/video textures + fit; opacity/feather/blend; zIndex reorder; missing-media state |
 | 6 | Output window + sync | ⬜ todo | `window.open`, BroadcastChannel, blackout, fullscreen |
 | 7 | Audio reactivity | ⬜ todo | Analyser bands, bindings, level meter |
 | 8 | MIDI learn | ⬜ todo | Feature-detect; CC/note mappings in project JSON |
 | 9 | Polish + README | ⬜ todo | Subdivide, test/white aids, projector setup notes |
 
 Status legend: `⬜ todo` · `🚧 in progress` · `✅ done` · `⛔ blocked`
+
+## Phase 5 notes (2026-07-19)
+
+- Media loader: object URLs for image/video; video uploads when `readyState >= 2`
+- Fit modes: cover / contain / stretch in shader UV mapping
+- Feather: smoothstep from zone UV edges (px → UV via canvas short side)
+- Blend modes via framebuffer blend equations (normal/add/multiply/screen)
+- Missing media after reload shows striped placeholder + re-import prompt
+- Zone list ↑↓ nudges zIndex for compositing order
 
 ## Phase 4 notes (2026-07-19)
 
@@ -89,6 +98,7 @@ From the spec — mark when verified:
 - [x] JSON export/import round-trips (media refs → missing state)
 - [x] `npm run build` produces a static bundle
 - [x] Perspective correctness path in place (homography + projective UV) — confirm visually with extreme trapezoid
+- [x] Video/image sources with fit modes (re-import after reload; object URLs don’t persist)
 
 ## Privacy (public repo)
 
@@ -103,4 +113,4 @@ Safe to commit: source, docs, the clean-room spec, this tracker, public README.
 
 ## Blockers / open questions
 
-_None. Ready for Phase 5 (image/video + compositing)._
+_None. Ready for Phase 6 (output window + BroadcastChannel)._

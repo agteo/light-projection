@@ -16,6 +16,8 @@ export interface ProjectStore {
   renameZone: (id: string, name: string) => void;
   deleteZone: (id: string) => void;
   duplicateZone: (id: string) => Zone | null;
+  /** Swap zIndex with neighbor (dir -1 = send back, +1 = bring forward). */
+  nudgeZoneZ: (id: string, dir: -1 | 1) => void;
   /** Persist current project to localStorage immediately. */
   save: () => void;
 }
@@ -112,6 +114,24 @@ export function createProjectStore(initial?: Project): ProjectStore {
       });
       commit({ ...project, zones: [...project.zones, zone] });
       return zone;
+    },
+
+    nudgeZoneZ: (id, dir) => {
+      const sorted = [...project.zones].sort((a, b) => a.zIndex - b.zIndex);
+      const index = sorted.findIndex((z) => z.id === id);
+      if (index < 0) return;
+      const swapWith = index + dir;
+      if (swapWith < 0 || swapWith >= sorted.length) return;
+      const a = sorted[index]!;
+      const b = sorted[swapWith]!;
+      commit({
+        ...project,
+        zones: project.zones.map((z) => {
+          if (z.id === a.id) return { ...z, zIndex: b.zIndex };
+          if (z.id === b.id) return { ...z, zIndex: a.zIndex };
+          return z;
+        }),
+      });
     },
 
     save: () => {
