@@ -7,6 +7,7 @@ import {
 } from '../state/persistence';
 import { WebGLRenderer } from '../render/renderer';
 import { mountCanvasEditor, type CanvasEditorHandle } from './canvasEditor';
+import { mountSourcePanel } from './sourcePanel';
 
 function sourceLabel(projectZoneSource: import('../domain/types').SourceAssignment): string {
   switch (projectZoneSource.kind) {
@@ -31,7 +32,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
       <header class="topbar">
         <div class="brand">
           <h1>Lazy Mapper</h1>
-          <p class="tag">Phase 3 — canvas editor interactions</p>
+          <p class="tag">Phase 4 — effects library + source panel</p>
         </div>
         <label class="field name-field">
           <span>Project</span>
@@ -43,7 +44,8 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
         <div class="panel-head">
           <h2>Output preview</h2>
           <div class="actions compact">
-            <button type="button" id="mode-test" class="active">Test pattern</button>
+            <button type="button" id="mode-live" class="active">Live</button>
+            <button type="button" id="mode-test">Test pattern</button>
             <button type="button" id="mode-white">White</button>
           </div>
         </div>
@@ -57,6 +59,8 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
         </div>
         <ul id="zone-list" class="zone-list"></ul>
       </section>
+
+      <section class="panel" id="source-panel"></section>
 
       <section class="panel">
         <div class="panel-head">
@@ -84,18 +88,32 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   const previewEl = root.querySelector<HTMLPreElement>('#json-preview')!;
   const importInput = root.querySelector<HTMLInputElement>('#import-json')!;
   const canvasHost = root.querySelector<HTMLElement>('#canvas-host')!;
+  const modeLiveBtn = root.querySelector<HTMLButtonElement>('#mode-live')!;
   const modeTestBtn = root.querySelector<HTMLButtonElement>('#mode-test')!;
   const modeWhiteBtn = root.querySelector<HTMLButtonElement>('#mode-white')!;
+  const sourceHost = root.querySelector<HTMLElement>('#source-panel')!;
 
   // Create GL canvas first so the renderer owns the correct element.
   canvasHost.innerHTML = `<div class="canvas-wrap"><canvas class="gl-canvas"></canvas></div>`;
   const glCanvas = canvasHost.querySelector<HTMLCanvasElement>('.gl-canvas')!;
   const renderer = new WebGLRenderer(glCanvas);
+  renderer.setMode('live');
+
   const editor: CanvasEditorHandle = mountCanvasEditor(canvasHost, store, renderer, {
-    onSelectionChange: () => {
+    onSelectionChange: (zoneId) => {
+      sourcePanel.setZoneId(zoneId);
       render();
     },
   });
+
+  const sourcePanel = mountSourcePanel(sourceHost, store, () => editor.getSelectedZoneId());
+  sourcePanel.setZoneId(editor.getSelectedZoneId());
+
+  const setModeButtons = (mode: 'live' | 'test-pattern' | 'white'): void => {
+    modeLiveBtn.classList.toggle('active', mode === 'live');
+    modeTestBtn.classList.toggle('active', mode === 'test-pattern');
+    modeWhiteBtn.classList.toggle('active', mode === 'white');
+  };
 
   const setStatus = (message: string, kind: 'ok' | 'err' = 'ok'): void => {
     statusEl.textContent = message;
@@ -162,16 +180,21 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
     if (!(target instanceof HTMLButtonElement)) return;
     if (target.dataset.select) {
       editor.setSelectedZoneId(target.dataset.select);
+      sourcePanel.setZoneId(target.dataset.select);
       render();
       return;
     }
     if (target.dataset.dup) {
       const zone = store.duplicateZone(target.dataset.dup);
-      if (zone) editor.setSelectedZoneId(zone.id);
+      if (zone) {
+        editor.setSelectedZoneId(zone.id);
+        sourcePanel.setZoneId(zone.id);
+      }
       setStatus('Zone duplicated.');
     }
     if (target.dataset.del) {
       store.deleteZone(target.dataset.del);
+      sourcePanel.setZoneId(editor.getSelectedZoneId());
       setStatus('Zone deleted.');
     }
   });
@@ -179,20 +202,25 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   root.querySelector('#add-zone')!.addEventListener('click', () => {
     const zone = store.addZone();
     editor.setSelectedZoneId(zone.id);
+    sourcePanel.setZoneId(zone.id);
     setStatus('Zone added.');
+  });
+
+  modeLiveBtn.addEventListener('click', () => {
+    renderer.setMode('live');
+    setModeButtons('live');
+    setStatus('Live sources.');
   });
 
   modeTestBtn.addEventListener('click', () => {
     renderer.setMode('test-pattern');
-    modeTestBtn.classList.add('active');
-    modeWhiteBtn.classList.remove('active');
-    setStatus('Test pattern mode.');
+    setModeButtons('test-pattern');
+    setStatus('Test pattern alignment aid.');
   });
 
   modeWhiteBtn.addEventListener('click', () => {
     renderer.setMode('white');
-    modeWhiteBtn.classList.add('active');
-    modeTestBtn.classList.remove('active');
+    setModeButtons('white');
     setStatus('White fill mode (focus aid).');
   });
 
@@ -209,6 +237,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
     }
     store.replaceProject(loaded);
     editor.setSelectedZoneId(loaded.zones[0]?.id ?? null);
+    sourcePanel.setZoneId(loaded.zones[0]?.id ?? null);
     setStatus(`Reloaded “${loaded.name}” from localStorage.`);
   });
 
@@ -225,6 +254,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
       const project = await readProjectFile(file);
       store.replaceProject(project);
       editor.setSelectedZoneId(project.zones[0]?.id ?? null);
+      sourcePanel.setZoneId(project.zones[0]?.id ?? null);
       setStatus(`Imported “${project.name}” (${project.zones.length} zones).`);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Import failed.', 'err');
@@ -235,13 +265,15 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
     if (!confirm('Replace the current project with a new default?')) return;
     clearLocalStorage();
     store.resetProject();
-    editor.setSelectedZoneId(store.getState().zones[0]?.id ?? null);
+    const id = store.getState().zones[0]?.id ?? null;
+    editor.setSelectedZoneId(id);
+    sourcePanel.setZoneId(id);
     setStatus('Started a new project.');
   });
 
   store.subscribe(render);
   render();
-  setStatus('Drag inside to move · Shift-drag to scale · Double-click empty to add · Arrows nudge.');
+  setStatus('Pick an effect in Source — try plasma, rings, strobe (capped), spectrum bars.');
 }
 
 function escapeAttr(value: string): string {

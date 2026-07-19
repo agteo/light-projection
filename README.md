@@ -6,7 +6,7 @@ Clean-room implementation inspired by the Lazy Lighting workflow — no copied a
 
 ## Status
 
-**Phase 3 complete** — canvas move/scale, edge handles, keyboard nudge. See [PROGRESS.md](./PROGRESS.md) for phased build status and [lazy-lighting-clone-spec.md](./lazy-lighting-clone-spec.md) for the full product spec.
+**Phase 4 complete** — 8 GLSL effects + source panel. See [PROGRESS.md](./PROGRESS.md) for phased build status and [lazy-lighting-clone-spec.md](./lazy-lighting-clone-spec.md) for the full product spec.
 
 **Stack (locked):** Vanilla TypeScript · Vite · WebGL2 · `BroadcastChannel` editor↔output sync.
 
@@ -22,7 +22,7 @@ npm run build
 npx serve dist
 ```
 
-In the editor: drag corners/edge midpoints; drag inside a zone to move; Shift-drag to scale; double-click empty space to add a zone; arrow keys nudge (Shift = 10px). Export/import JSON; edits auto-save to `localStorage`.
+Use **Live** mode and the Source panel to pick effects (pulse, gradient, bars, plasma, rings, strobe, sparkle, spectrum). Test pattern / White are alignment aids. Drag corners/edges to warp zones; arrow keys nudge.
 ## Projector setup (summary)
 
 1. Open the editor in Chrome/Edge on the laptop.

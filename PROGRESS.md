@@ -2,7 +2,7 @@
 
 Living tracker for building the local web projection-mapping app from `lazy-lighting-clone-spec.md`.
 
-**Last updated:** 2026-07-19 (Phase 3)
+**Last updated:** 2026-07-19 (Phase 4)
 
 ## Locked decisions
 
@@ -20,7 +20,7 @@ Living tracker for building the local web projection-mapping app from `lazy-ligh
 | 1 | Scaffold, state, save/load | ✅ done | Vite + TS; `ProjectStore`; auto localStorage; JSON export/import; zone add/rename/dup/delete |
 | 2 | WebGL homography + test pattern | ✅ done | `quadToUnitSquare` + WebGL2 warp; procedural test pattern; corner drag with convexity guard |
 | 3 | Editor canvas interactions | ✅ done | Edge midpoints; move; Shift-scale; double-click add; arrow nudge (Shift=10px) |
-| 4 | Effects library + source panel | ⬜ todo | All 8 shaders; color/speed/params |
+| 4 | Effects library + source panel | ✅ done | All 8 shaders; Live/Test/White; source panel with colors/speed/params; strobe safety |
 | 5 | Media + compositing | ⬜ todo | Image/video, blend, opacity, feather, zIndex |
 | 6 | Output window + sync | ⬜ todo | `window.open`, BroadcastChannel, blackout, fullscreen |
 | 7 | Audio reactivity | ⬜ todo | Analyser bands, bindings, level meter |
@@ -28,6 +28,15 @@ Living tracker for building the local web projection-mapping app from `lazy-ligh
 | 9 | Polish + README | ⬜ todo | Subdivide, test/white aids, projector setup notes |
 
 Status legend: `⬜ todo` · `🚧 in progress` · `✅ done` · `⛔ blocked`
+
+## Phase 4 notes (2026-07-19)
+
+- Registry: `src/effects/registry.ts` — 8 effects + param schemas
+- Shaders: single warp program switches on `u_effectId` (test / white / solid / 8 effects)
+- Spectrum bars use a 256×1 texture (demo waveform until Phase 7 mic)
+- Strobe capped at 3 Hz unless “Allow > 3 Hz” is checked (warning shown)
+- Source panel: effect/solid, colors, speed, per-effect params
+- Preview modes: Live · Test pattern · White
 
 ## Phase 3 notes (2026-07-19)
 
@@ -94,4 +103,4 @@ Safe to commit: source, docs, the clean-room spec, this tracker, public README.
 
 ## Blockers / open questions
 
-_None. Ready for Phase 4 (effects library + source panel)._
+_None. Ready for Phase 5 (image/video + compositing)._

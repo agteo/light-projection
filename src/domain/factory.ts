@@ -1,5 +1,6 @@
 import type { Project, SourceAssignment, Vec2, Zone } from './types';
 import { PROJECT_VERSION } from './types';
+import { DEFAULT_EFFECT_ID, defaultParamsFor } from '../effects/registry';
 
 export function createId(prefix = 'id'): string {
   return `${prefix}_${crypto.randomUUID()}`;
@@ -17,11 +18,11 @@ export function defaultCorners(size = 0.4): [Vec2, Vec2, Vec2, Vec2] {
   ];
 }
 
-export function defaultEffectSource(): SourceAssignment {
+export function defaultEffectSource(effectId = DEFAULT_EFFECT_ID): SourceAssignment {
   return {
     kind: 'effect',
-    effectId: 'solid-pulse',
-    params: {},
+    effectId,
+    params: defaultParamsFor(effectId),
     color1: '#ff6644',
     color2: '#2244ff',
     speed: 1,
