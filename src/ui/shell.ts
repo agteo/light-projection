@@ -5,6 +5,8 @@ import {
   loadFromLocalStorage,
   readProjectFile,
 } from '../state/persistence';
+import { WebGLRenderer } from '../render/renderer';
+import { mountCanvasEditor, type CanvasEditorHandle } from './canvasEditor';
 
 function sourceLabel(projectZoneSource: import('../domain/types').SourceAssignment): string {
   switch (projectZoneSource.kind) {
@@ -29,13 +31,24 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
       <header class="topbar">
         <div class="brand">
           <h1>Lazy Mapper</h1>
-          <p class="tag">Phase 1 — project state &amp; persistence</p>
+          <p class="tag">Phase 2 — WebGL homography + test pattern</p>
         </div>
         <label class="field name-field">
           <span>Project</span>
           <input type="text" id="project-name" autocomplete="off" />
         </label>
       </header>
+
+      <section class="panel canvas-panel">
+        <div class="panel-head">
+          <h2>Output preview</h2>
+          <div class="actions compact">
+            <button type="button" id="mode-test" class="active">Test pattern</button>
+            <button type="button" id="mode-white">White</button>
+          </div>
+        </div>
+        <div id="canvas-host"></div>
+      </section>
 
       <section class="panel">
         <div class="panel-head">
@@ -70,6 +83,19 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   const statusEl = root.querySelector<HTMLParagraphElement>('#status')!;
   const previewEl = root.querySelector<HTMLPreElement>('#json-preview')!;
   const importInput = root.querySelector<HTMLInputElement>('#import-json')!;
+  const canvasHost = root.querySelector<HTMLElement>('#canvas-host')!;
+  const modeTestBtn = root.querySelector<HTMLButtonElement>('#mode-test')!;
+  const modeWhiteBtn = root.querySelector<HTMLButtonElement>('#mode-white')!;
+
+  // Create GL canvas first so the renderer owns the correct element.
+  canvasHost.innerHTML = `<div class="canvas-wrap"><canvas class="gl-canvas"></canvas></div>`;
+  const glCanvas = canvasHost.querySelector<HTMLCanvasElement>('.gl-canvas')!;
+  const renderer = new WebGLRenderer(glCanvas);
+  const editor: CanvasEditorHandle = mountCanvasEditor(canvasHost, store, renderer, {
+    onSelectionChange: () => {
+      render();
+    },
+  });
 
   const setStatus = (message: string, kind: 'ok' | 'err' = 'ok'): void => {
     statusEl.textContent = message;
@@ -79,13 +105,15 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   const render = (): void => {
     const project = store.getState();
     nameInput.value = project.name;
+    const selected = editor.getSelectedZoneId();
 
     zoneList.innerHTML = '';
     const sorted = [...project.zones].sort((a, b) => a.zIndex - b.zIndex);
     for (const zone of sorted) {
       const li = document.createElement('li');
-      li.className = 'zone-row';
+      li.className = 'zone-row' + (zone.id === selected ? ' selected' : '');
       li.innerHTML = `
+        <button type="button" class="select-zone" data-select="${zone.id}" title="Select on canvas">●</button>
         <input type="text" class="zone-name" data-id="${zone.id}" value="${escapeAttr(zone.name)}" />
         <span class="meta">z${zone.zIndex} · ${sourceLabel(zone.source)}</span>
         <button type="button" data-dup="${zone.id}">Duplicate</button>
@@ -132,8 +160,14 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   zoneList.addEventListener('click', (event) => {
     const target = event.target;
     if (!(target instanceof HTMLButtonElement)) return;
+    if (target.dataset.select) {
+      editor.setSelectedZoneId(target.dataset.select);
+      render();
+      return;
+    }
     if (target.dataset.dup) {
-      store.duplicateZone(target.dataset.dup);
+      const zone = store.duplicateZone(target.dataset.dup);
+      if (zone) editor.setSelectedZoneId(zone.id);
       setStatus('Zone duplicated.');
     }
     if (target.dataset.del) {
@@ -143,8 +177,23 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   });
 
   root.querySelector('#add-zone')!.addEventListener('click', () => {
-    store.addZone();
+    const zone = store.addZone();
+    editor.setSelectedZoneId(zone.id);
     setStatus('Zone added.');
+  });
+
+  modeTestBtn.addEventListener('click', () => {
+    renderer.setMode('test-pattern');
+    modeTestBtn.classList.add('active');
+    modeWhiteBtn.classList.remove('active');
+    setStatus('Test pattern mode.');
+  });
+
+  modeWhiteBtn.addEventListener('click', () => {
+    renderer.setMode('white');
+    modeWhiteBtn.classList.add('active');
+    modeTestBtn.classList.remove('active');
+    setStatus('White fill mode (focus aid).');
   });
 
   root.querySelector('#save-local')!.addEventListener('click', () => {
@@ -159,6 +208,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
       return;
     }
     store.replaceProject(loaded);
+    editor.setSelectedZoneId(loaded.zones[0]?.id ?? null);
     setStatus(`Reloaded “${loaded.name}” from localStorage.`);
   });
 
@@ -174,6 +224,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
     try {
       const project = await readProjectFile(file);
       store.replaceProject(project);
+      editor.setSelectedZoneId(project.zones[0]?.id ?? null);
       setStatus(`Imported “${project.name}” (${project.zones.length} zones).`);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : 'Import failed.', 'err');
@@ -184,12 +235,13 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
     if (!confirm('Replace the current project with a new default?')) return;
     clearLocalStorage();
     store.resetProject();
+    editor.setSelectedZoneId(store.getState().zones[0]?.id ?? null);
     setStatus('Started a new project.');
   });
 
   store.subscribe(render);
   render();
-  setStatus('Ready — edits auto-save to localStorage.');
+  setStatus('Drag corners on the preview — grid lines must stay straight under extreme warps.');
 }
 
 function escapeAttr(value: string): string {

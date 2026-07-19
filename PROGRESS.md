@@ -2,7 +2,7 @@
 
 Living tracker for building the local web projection-mapping app from `lazy-lighting-clone-spec.md`.
 
-**Last updated:** 2026-07-19
+**Last updated:** 2026-07-19 (Phase 2)
 
 ## Locked decisions
 
@@ -18,8 +18,8 @@ Living tracker for building the local web projection-mapping app from `lazy-ligh
 |-------|------|--------|-------|
 | 0 | Repo bootstrap & public hygiene | ✅ done | Spec + tracker + `.gitignore` on GitHub |
 | 1 | Scaffold, state, save/load | ✅ done | Vite + TS; `ProjectStore`; auto localStorage; JSON export/import; zone add/rename/dup/delete |
-| 2 | WebGL homography + test pattern | ⬜ todo | Single zone; verify extreme trapezoid (no affine seam) |
-| 3 | Editor canvas interactions | ⬜ todo | Select, handles, move/scale, add/delete, keyboard nudge |
+| 2 | WebGL homography + test pattern | ✅ done | `quadToUnitSquare` + WebGL2 warp; procedural test pattern; corner drag with convexity guard |
+| 3 | Editor canvas interactions | ⬜ todo | Move/scale, keyboard nudge, edge midpoints, add-via-double-click |
 | 4 | Effects library + source panel | ⬜ todo | All 8 shaders; color/speed/params |
 | 5 | Media + compositing | ⬜ todo | Image/video, blend, opacity, feather, zIndex |
 | 6 | Output window + sync | ⬜ todo | `window.open`, BroadcastChannel, blackout, fullscreen |
@@ -28,6 +28,14 @@ Living tracker for building the local web projection-mapping app from `lazy-ligh
 | 9 | Polish + README | ⬜ todo | Subdivide, test/white aids, projector setup notes |
 
 Status legend: `⬜ todo` · `🚧 in progress` · `✅ done` · `⛔ blocked`
+
+## Phase 2 notes (2026-07-19)
+
+- Math: `src/math/homography.ts` — 8-DOF DLT, invert, convexity check
+- Render: `src/render/renderer.ts` + shaders — per-fragment `H_inv` sampling (not affine tris)
+- UI: canvas preview + overlay handles; Test pattern / White modes
+- Verify visually: drag corners into extreme trapezoid — checker/grid must stay straight
+- `npm run build` passes
 
 ## Phase 1 notes (2026-07-19)
 
@@ -58,11 +66,12 @@ From the spec — mark when verified:
 - [ ] `B` blacks out output instantly; project survives reload via localStorage; JSON export/import round-trips
 - [ ] `npm run build` produces a static bundle that works via `npx serve`
 
-### Phase 1 slice (partial acceptance)
+### Phase 1–2 slice (partial acceptance)
 
 - [x] Project survives reload via localStorage (auto-save on edits)
 - [x] JSON export/import round-trips (media refs → missing state)
 - [x] `npm run build` produces a static bundle
+- [x] Perspective correctness path in place (homography + projective UV) — confirm visually with extreme trapezoid
 
 ## Privacy (public repo)
 
@@ -77,4 +86,4 @@ Safe to commit: source, docs, the clean-room spec, this tracker, public README.
 
 ## Blockers / open questions
 
-_None. Ready for Phase 2 (WebGL homography)._
+_None. Ready for Phase 3 (full editor interactions)._

@@ -32,11 +32,85 @@ input,
 }
 
 .shell {
-  max-width: 880px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 2rem 1.25rem 3rem;
   display: grid;
   gap: 1.25rem;
+}
+
+.canvas-panel .panel-head {
+  margin-bottom: 0.75rem;
+}
+
+.actions.compact {
+  gap: 0.35rem;
+}
+
+button.active {
+  border-color: var(--accent);
+  background: #2a3d58;
+}
+
+.canvas-wrap {
+  position: relative;
+  width: 100%;
+  background: #000;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.canvas-stage {
+  position: relative;
+  width: 100%;
+  background: #000;
+}
+
+.gl-canvas,
+.overlay-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+}
+
+.overlay-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  cursor: crosshair;
+}
+
+.canvas-hint {
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+  background: #0e1117;
+  border-top: 1px solid var(--border);
+}
+
+.zone-row {
+  display: grid;
+  grid-template-columns: auto minmax(8rem, 1fr) minmax(10rem, 1.4fr) auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.zone-row.selected {
+  outline: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.select-zone {
+  padding: 0.35rem 0.45rem;
+  color: var(--muted);
+}
+
+.zone-row.selected .select-zone {
+  color: var(--accent);
 }
 
 .topbar {
@@ -139,13 +213,6 @@ button.danger,
   padding: 0;
   display: grid;
   gap: 0.5rem;
-}
-
-.zone-row {
-  display: grid;
-  grid-template-columns: minmax(8rem, 1fr) minmax(10rem, 1.4fr) auto auto;
-  gap: 0.5rem;
-  align-items: center;
 }
 
 .zone-row .meta {
