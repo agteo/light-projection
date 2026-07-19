@@ -5,9 +5,11 @@ import {
   loadFromLocalStorage,
   readProjectFile,
 } from '../state/persistence';
-import { WebGLRenderer } from '../render/renderer';
+import { WebGLRenderer, type RenderMode } from '../render/renderer';
+import { createSyncChannel, postState, type SyncMessage } from '../sync/channel';
 import { mountCanvasEditor, type CanvasEditorHandle } from './canvasEditor';
 import { mountSourcePanel } from './sourcePanel';
+import { openOutputWindow } from './outputWindow';
 
 function sourceLabel(projectZoneSource: import('../domain/types').SourceAssignment): string {
   switch (projectZoneSource.kind) {
@@ -32,12 +34,18 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
       <header class="topbar">
         <div class="brand">
           <h1>Lazy Mapper</h1>
-          <p class="tag">Phase 5 — media + compositing</p>
+          <p class="tag">Phase 6 — output window + sync</p>
         </div>
-        <label class="field name-field">
-          <span>Project</span>
-          <input type="text" id="project-name" autocomplete="off" />
-        </label>
+        <div class="topbar-actions">
+          <label class="field name-field">
+            <span>Project</span>
+            <input type="text" id="project-name" autocomplete="off" />
+          </label>
+          <div class="actions compact output-actions">
+            <button type="button" id="open-output">Open output</button>
+            <button type="button" id="toggle-blackout">Blackout (B)</button>
+          </div>
+        </div>
       </header>
 
       <section class="panel canvas-panel">
@@ -97,7 +105,26 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   canvasHost.innerHTML = `<div class="canvas-wrap"><canvas class="gl-canvas"></canvas></div>`;
   const glCanvas = canvasHost.querySelector<HTMLCanvasElement>('.gl-canvas')!;
   const renderer = new WebGLRenderer(glCanvas);
-  renderer.setMode('live');
+  let renderMode: RenderMode = 'live';
+  renderer.setMode(renderMode);
+  renderer.setBlackout(store.getState().blackout);
+
+  const sync = createSyncChannel();
+  const broadcast = (): void => {
+    postState(sync, store.getState(), renderMode);
+  };
+
+  sync.onmessage = (event: MessageEvent<SyncMessage>) => {
+    const msg = event.data;
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.type === 'hello' && msg.role === 'output') {
+      broadcast();
+      return;
+    }
+    if (msg.type === 'blackout') {
+      store.setBlackout(msg.value);
+    }
+  };
 
   const editor: CanvasEditorHandle = mountCanvasEditor(canvasHost, store, renderer, {
     onSelectionChange: (zoneId) => {
@@ -109,10 +136,20 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   const sourcePanel = mountSourcePanel(sourceHost, store, () => editor.getSelectedZoneId());
   sourcePanel.setZoneId(editor.getSelectedZoneId());
 
-  const setModeButtons = (mode: 'live' | 'test-pattern' | 'white'): void => {
+  const openOutputBtn = root.querySelector<HTMLButtonElement>('#open-output')!;
+  const blackoutBtn = root.querySelector<HTMLButtonElement>('#toggle-blackout')!;
+
+  const setModeButtons = (mode: RenderMode): void => {
     modeLiveBtn.classList.toggle('active', mode === 'live');
     modeTestBtn.classList.toggle('active', mode === 'test-pattern');
     modeWhiteBtn.classList.toggle('active', mode === 'white');
+  };
+
+  const syncBlackoutUi = (): void => {
+    const on = store.getState().blackout;
+    renderer.setBlackout(on);
+    blackoutBtn.classList.toggle('active', on);
+    blackoutBtn.textContent = on ? 'Lift blackout (B)' : 'Blackout (B)';
   };
 
   const setStatus = (message: string, kind: 'ok' | 'err' = 'ok'): void => {
@@ -219,21 +256,52 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   });
 
   modeLiveBtn.addEventListener('click', () => {
-    renderer.setMode('live');
-    setModeButtons('live');
+    renderMode = 'live';
+    renderer.setMode(renderMode);
+    setModeButtons(renderMode);
+    broadcast();
     setStatus('Live sources.');
   });
 
   modeTestBtn.addEventListener('click', () => {
-    renderer.setMode('test-pattern');
-    setModeButtons('test-pattern');
-    setStatus('Test pattern alignment aid.');
+    renderMode = 'test-pattern';
+    renderer.setMode(renderMode);
+    setModeButtons(renderMode);
+    broadcast();
+    setStatus('Test pattern alignment aid (synced to output).');
   });
 
   modeWhiteBtn.addEventListener('click', () => {
-    renderer.setMode('white');
-    setModeButtons('white');
-    setStatus('White fill mode (focus aid).');
+    renderMode = 'white';
+    renderer.setMode(renderMode);
+    setModeButtons(renderMode);
+    broadcast();
+    setStatus('White fill mode (synced to output).');
+  });
+
+  openOutputBtn.addEventListener('click', async () => {
+    const win = await openOutputWindow();
+    if (!win) {
+      setStatus('Popup blocked — allow popups for this site, then try again.', 'err');
+      return;
+    }
+    broadcast();
+    setStatus('Output window opened — drag to projector and press Fullscreen / F11.');
+  });
+
+  blackoutBtn.addEventListener('click', () => {
+    store.setBlackout(!store.getState().blackout);
+  });
+
+  window.addEventListener('keydown', (event) => {
+    const target = event.target;
+    if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
+      return;
+    }
+    if (event.key === 'b' || event.key === 'B') {
+      event.preventDefault();
+      store.setBlackout(!store.getState().blackout);
+    }
   });
 
   root.querySelector('#save-local')!.addEventListener('click', () => {
@@ -283,9 +351,15 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
     setStatus('Started a new project.');
   });
 
-  store.subscribe(render);
+  store.subscribe(() => {
+    syncBlackoutUi();
+    render();
+    broadcast();
+  });
+  syncBlackoutUi();
   render();
-  setStatus('Import image/video in Source · tweak opacity, feather, blend · reorder with ↑↓.');
+  broadcast();
+  setStatus('Open output for the projector · B blackout · modes sync over BroadcastChannel.');
 }
 
 function escapeAttr(value: string): string {

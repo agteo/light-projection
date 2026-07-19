@@ -88,6 +88,7 @@ export class WebGLRenderer {
   private cssHeight = 1;
   private audioLevel = 0;
   private spectrumBins: Float32Array | null = null;
+  private blackout = false;
 
   constructor(canvas: HTMLCanvasElement) {
     const gl = canvas.getContext('webgl2', {
@@ -146,6 +147,10 @@ export class WebGLRenderer {
 
   setMode(mode: RenderMode): void {
     this.mode = mode;
+  }
+
+  setBlackout(blackout: boolean): void {
+    this.blackout = blackout;
   }
 
   setZones(zones: Zone[]): void {
@@ -279,6 +284,11 @@ export class WebGLRenderer {
 
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
+
+    if (this.blackout) {
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      return;
+    }
 
     gl.useProgram(this.program);
     this.updateSpectrumTexture(t);

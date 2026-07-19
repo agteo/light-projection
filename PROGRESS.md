@@ -2,7 +2,7 @@
 
 Living tracker for building the local web projection-mapping app from `lazy-lighting-clone-spec.md`.
 
-**Last updated:** 2026-07-19 (Phase 5)
+**Last updated:** 2026-07-19 (Phase 6)
 
 ## Locked decisions
 
@@ -22,12 +22,20 @@ Living tracker for building the local web projection-mapping app from `lazy-ligh
 | 3 | Editor canvas interactions | ✅ done | Edge midpoints; move; Shift-scale; double-click add; arrow nudge (Shift=10px) |
 | 4 | Effects library + source panel | ✅ done | All 8 shaders; Live/Test/White; source panel with colors/speed/params; strobe safety |
 | 5 | Media + compositing | ✅ done | Image/video textures + fit; opacity/feather/blend; zIndex reorder; missing-media state |
-| 6 | Output window + sync | ⬜ todo | `window.open`, BroadcastChannel, blackout, fullscreen |
+| 6 | Output window + sync | ✅ done | `output.html` + BroadcastChannel; blackout `B`; fullscreen; optional second-screen placement |
 | 7 | Audio reactivity | ⬜ todo | Analyser bands, bindings, level meter |
 | 8 | MIDI learn | ⬜ todo | Feature-detect; CC/note mappings in project JSON |
 | 9 | Polish + README | ⬜ todo | Subdivide, test/white aids, projector setup notes |
 
 Status legend: `⬜ todo` · `🚧 in progress` · `✅ done` · `⛔ blocked`
+
+## Phase 6 notes (2026-07-19)
+
+- `output.html` + `src/outputMain.ts` — projector window, black background only
+- Sync: `BroadcastChannel` (`lazy-mapper-sync-v1`) shares project + render mode; output hydrates blob media URLs
+- Editor: **Open output**, **Blackout (B)**; modes (Live/Test/White) sync to output
+- Output: Fullscreen button / `F`; blackout `/B`; HUD on mouse move
+- Optional `getScreenDetails()` placement on a secondary display; falls back to manual drag + F11
 
 ## Phase 5 notes (2026-07-19)
 
@@ -99,6 +107,7 @@ From the spec — mark when verified:
 - [x] `npm run build` produces a static bundle
 - [x] Perspective correctness path in place (homography + projective UV) — confirm visually with extreme trapezoid
 - [x] Video/image sources with fit modes (re-import after reload; object URLs don’t persist)
+- [x] Output window syncs via BroadcastChannel; `B` blackout
 
 ## Privacy (public repo)
 
@@ -113,4 +122,4 @@ Safe to commit: source, docs, the clean-room spec, this tracker, public README.
 
 ## Blockers / open questions
 
-_None. Ready for Phase 6 (output window + BroadcastChannel)._
+_None. Ready for Phase 7 (audio reactivity)._
