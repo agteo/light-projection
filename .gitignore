@@ -28,7 +28,8 @@ coverage/
 .nyc_output/
 
 # Local media used while testing (keep out of public repo)
-media/
+# Only ignore a repo-root /media folder — not src/media/ (source modules).
+/media/
 *.mp4
 *.webm
 *.mov
