@@ -1,6 +1,8 @@
 # Light Mapper
 
-Local browser app for HDMI projection mapping: draw corner-pinned zones, assign effects or media, warp them with a projective (homography) transform, and output a fullscreen composite to a second display.
+Ever wanted to project your own images onto physical spaces — a logo on a box, a pattern on a wall, video on a stage prop?
+
+Light Mapper turns any HDMI projector into a browser-based mapping tool. Draw corner-pinned zones, drop in images, video, or live effects, warp them to match real surfaces, and send a fullscreen composite to a second display. Optional mic and MIDI reactivity keep the look in sync with the room.
 
 **Stack:** Vanilla TypeScript · Vite · WebGL2 · `BroadcastChannel` editor↔output sync.
 
