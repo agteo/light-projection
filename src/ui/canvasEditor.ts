@@ -132,7 +132,7 @@ export function mountCanvasEditor(
     wrap.appendChild(hint);
   }
     hint.textContent =
-      'Corners / edges · drag inside to move · Shift-drag scale · double-click empty to add · arrows nudge · Split 2×2/3×3 in Zones.';
+      'Drag corners to match your surface. Drag inside to move · Shift-drag to scale · arrows to nudge.';
 
   let selectedZoneId: string | null = store.getState().zones[0]?.id ?? null;
   let selectedCornerIndex: number | null = null;

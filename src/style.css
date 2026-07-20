@@ -178,6 +178,140 @@ button.active {
   padding: 1rem 1.1rem 1.15rem;
 }
 
+.panel-intro {
+  margin: -0.35rem 0 0.85rem;
+}
+
+.mode-hint {
+  margin: -0.35rem 0 0.75rem;
+}
+
+.getting-started {
+  background: color-mix(in srgb, #1e3a5f 55%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: 10px;
+  padding: 1rem 1.15rem 1.15rem;
+}
+
+.getting-started-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+}
+
+.getting-started-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.getting-started-steps {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.45rem;
+  font-size: 0.92rem;
+}
+
+.getting-started-more {
+  margin: 0.85rem 0 0;
+}
+
+.getting-started-more a {
+  color: var(--accent);
+}
+
+.text-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  padding: 0.25rem 0.45rem;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.text-btn:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.optional-panel > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 1rem;
+  font-weight: 600;
+  user-select: none;
+}
+
+.optional-panel > summary::-webkit-details-marker {
+  display: none;
+}
+
+.optional-panel > summary::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform 120ms ease;
+  flex-shrink: 0;
+}
+
+.optional-panel[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.optional-panel > summary .summary-title {
+  flex: 1;
+}
+
+.optional-tag {
+  font-size: 0.72rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+}
+
+.optional-body {
+  margin-top: 0.9rem;
+  padding-top: 0.15rem;
+}
+
+.nested-advanced {
+  margin-top: 0.9rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.nested-advanced > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.85rem;
+  user-select: none;
+}
+
+.nested-advanced[open] > summary {
+  margin-bottom: 0.65rem;
+  color: var(--text);
+}
+
+.nested-advanced .muted {
+  margin: 0 0 0.65rem;
+}
+
+.canvas-panel .status {
+  margin-top: 0.75rem;
+}
+
 .panel-head {
   display: flex;
   align-items: center;

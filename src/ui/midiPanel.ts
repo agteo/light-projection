@@ -17,7 +17,6 @@ export interface MidiPanelHandle {
 export function mountMidiPanel(host: HTMLElement, store: ProjectStore): MidiPanelHandle {
   if (!midiSupported()) {
     host.innerHTML = `
-      <div class="panel-head"><h2>MIDI</h2></div>
       <p class="muted">Web MIDI is unavailable here. Use Chrome or Edge to map a controller.</p>
     `;
     host.hidden = false;
@@ -26,7 +25,6 @@ export function mountMidiPanel(host: HTMLElement, store: ProjectStore): MidiPane
 
   host.innerHTML = `
     <div class="panel-head">
-      <h2>MIDI</h2>
       <button type="button" id="midi-connect">Connect MIDI</button>
     </div>
     <p id="midi-status" class="muted">Disconnected — connect a controller, then Learn a target.</p>

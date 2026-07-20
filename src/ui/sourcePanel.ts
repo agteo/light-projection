@@ -33,7 +33,7 @@ export function mountSourcePanel(
       <h2>Source</h2>
       <span id="source-zone-label" class="muted"></span>
     </div>
-    <div id="source-empty" class="source-empty">Select a zone to edit its source.</div>
+    <div id="source-empty" class="source-empty">Select a zone above, then choose what to show on it.</div>
     <div id="source-form" class="source-form hidden">
       <label class="field">
         <span>Type</span>

@@ -30,13 +30,24 @@ function sourceLabel(projectZoneSource: import('../domain/types').SourceAssignme
   }
 }
 
+const GETTING_STARTED_KEY = 'light-mapper.getting-started-dismissed';
+const TUTORIAL_URL = 'https://github.com/agteo/light-projection/blob/main/TUTORIAL.md';
+
+const MODE_HINTS: Record<RenderMode, string> = {
+  live: 'Live — shows your images, video, and effects.',
+  'test-pattern': 'Test pattern — use this grid to line up zone corners with a real surface.',
+  white: 'White — bright fill to focus the projector and find your object.',
+};
+
 export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
+  const showGettingStarted = localStorage.getItem(GETTING_STARTED_KEY) !== '1';
+
   root.innerHTML = `
     <div class="shell">
       <header class="topbar">
         <div class="brand">
           <h1>Light Mapper</h1>
-          <p class="tag">Light Mapper — local projection mapping</p>
+          <p class="tag">Map images &amp; effects onto real surfaces</p>
         </div>
         <div class="topbar-actions">
           <label class="field name-field">
@@ -50,6 +61,29 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
         </div>
       </header>
 
+      ${
+        showGettingStarted
+          ? `
+      <aside class="getting-started" id="getting-started" aria-label="Getting started">
+        <div class="getting-started-head">
+          <h2>Getting started</h2>
+          <button type="button" id="dismiss-getting-started" class="text-btn" title="Hide this guide">Dismiss</button>
+        </div>
+        <ol class="getting-started-steps">
+          <li>Connect a projector as an <strong>extended</strong> display (not mirrored).</li>
+          <li>Click <strong>Open output</strong>, drag that window to the projector, then fullscreen it.</li>
+          <li>Try <strong>White</strong> or <strong>Test pattern</strong> above to focus and align.</li>
+          <li>Drag the zone’s corner handles so they match your physical surface.</li>
+          <li>In <strong>Source</strong>, pick <strong>Image</strong> and load a logo or photo.</li>
+        </ol>
+        <p class="muted getting-started-more">
+          Need more detail?
+          <a href="${TUTORIAL_URL}" target="_blank" rel="noopener noreferrer">Full tutorial on GitHub</a>
+        </p>
+      </aside>`
+          : ''
+      }
+
       <section class="panel canvas-panel">
         <div class="panel-head">
           <h2>Output preview</h2>
@@ -59,7 +93,9 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
             <button type="button" id="mode-white">White</button>
           </div>
         </div>
+        <p id="mode-hint" class="muted mode-hint">${MODE_HINTS.live}</p>
         <div id="canvas-host"></div>
+        <p id="status" class="status" role="status"></p>
       </section>
 
       <section class="panel">
@@ -67,48 +103,72 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
           <h2>Zones</h2>
           <div class="actions compact">
             <button type="button" id="add-zone">Add zone</button>
+          </div>
+        </div>
+        <p class="muted panel-intro">Each zone is a mappable surface. Select one, then edit it in Source.</p>
+        <ul id="zone-list" class="zone-list"></ul>
+        <details class="nested-advanced">
+          <summary>Advanced — split into a grid</summary>
+          <p class="muted">Replace the selected zone with a 2×2 or 3×3 grid that fills the same shape.</p>
+          <div class="actions compact">
             <button type="button" id="split-2" title="Replace selected zone with a 2×2 grid">Split 2×2</button>
             <button type="button" id="split-3" title="Replace selected zone with a 3×3 grid">Split 3×3</button>
           </div>
-        </div>
-        <ul id="zone-list" class="zone-list"></ul>
+        </details>
       </section>
 
       <section class="panel" id="source-panel"></section>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Audio input</h2>
-          <button type="button" id="mic-toggle">Enable mic</button>
+      <details class="panel optional-panel">
+        <summary>
+          <span class="summary-title">Audio input</span>
+          <span class="optional-tag">optional</span>
+        </summary>
+        <div class="optional-body">
+          <div class="panel-head">
+            <button type="button" id="mic-toggle">Enable mic</button>
+          </div>
+          <div class="meters" aria-label="Audio levels">
+            <div class="meter"><span>Level</span><div class="meter-track"><i id="meter-level"></i></div></div>
+            <div class="meter"><span>Bass</span><div class="meter-track"><i id="meter-bass"></i></div></div>
+            <div class="meter"><span>Mid</span><div class="meter-track"><i id="meter-mid"></i></div></div>
+            <div class="meter"><span>Treble</span><div class="meter-track"><i id="meter-treble"></i></div></div>
+          </div>
+          <p class="muted mic-hint">Enable the mic, then in Source turn on audio binding (bass → opacity is an easy clap test).</p>
         </div>
-        <div class="meters" aria-label="Audio levels">
-          <div class="meter"><span>Level</span><div class="meter-track"><i id="meter-level"></i></div></div>
-          <div class="meter"><span>Bass</span><div class="meter-track"><i id="meter-bass"></i></div></div>
-          <div class="meter"><span>Mid</span><div class="meter-track"><i id="meter-mid"></i></div></div>
-          <div class="meter"><span>Treble</span><div class="meter-track"><i id="meter-treble"></i></div></div>
-        </div>
-        <p class="muted mic-hint">Enable mic, then bind a zone (bass→opacity is a good clap test).</p>
-      </section>
+      </details>
 
-      <section class="panel" id="midi-panel"></section>
+      <details class="panel optional-panel">
+        <summary>
+          <span class="summary-title">MIDI</span>
+          <span class="optional-tag">optional</span>
+        </summary>
+        <div class="optional-body" id="midi-panel"></div>
+      </details>
 
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Persistence</h2>
+      <details class="panel optional-panel">
+        <summary>
+          <span class="summary-title">Save / export</span>
+          <span class="optional-tag">optional</span>
+        </summary>
+        <div class="optional-body">
+          <p class="muted panel-intro">Projects auto-save in this browser. Export a JSON backup when you want a file copy.</p>
+          <div class="actions">
+            <button type="button" id="save-local">Save now</button>
+            <button type="button" id="reload-local">Reload saved</button>
+            <button type="button" id="export-json">Export file</button>
+            <label class="file-btn">
+              Import file
+              <input type="file" id="import-json" accept="application/json,.json" hidden />
+            </label>
+            <button type="button" id="new-project" class="danger">New project</button>
+          </div>
+          <details class="nested-advanced">
+            <summary>Show project data</summary>
+            <pre id="json-preview" class="json-preview" aria-label="Serialized project preview"></pre>
+          </details>
         </div>
-        <div class="actions">
-          <button type="button" id="save-local">Save to localStorage</button>
-          <button type="button" id="reload-local">Reload from localStorage</button>
-          <button type="button" id="export-json">Export JSON</button>
-          <label class="file-btn">
-            Import JSON
-            <input type="file" id="import-json" accept="application/json,.json" hidden />
-          </label>
-          <button type="button" id="new-project" class="danger">New project</button>
-        </div>
-        <p id="status" class="status" role="status"></p>
-        <pre id="json-preview" class="json-preview" aria-label="Serialized project preview"></pre>
-      </section>
+      </details>
     </div>
   `;
 
@@ -209,11 +269,19 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
     }
   });
 
+  const modeHintEl = root.querySelector<HTMLParagraphElement>('#mode-hint')!;
+
   const setModeButtons = (mode: RenderMode): void => {
     modeLiveBtn.classList.toggle('active', mode === 'live');
     modeTestBtn.classList.toggle('active', mode === 'test-pattern');
     modeWhiteBtn.classList.toggle('active', mode === 'white');
+    modeHintEl.textContent = MODE_HINTS[mode];
   };
+
+  root.querySelector('#dismiss-getting-started')?.addEventListener('click', () => {
+    localStorage.setItem(GETTING_STARTED_KEY, '1');
+    root.querySelector('#getting-started')?.remove();
+  });
 
   const syncBlackoutUi = (): void => {
     const on = store.getState().blackout;
@@ -395,24 +463,24 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
 
   root.querySelector('#save-local')!.addEventListener('click', () => {
     store.save();
-    setStatus(`Saved to localStorage (${store.getState().zones.length} zones).`);
+    setStatus(`Saved (${store.getState().zones.length} zones).`);
   });
 
   root.querySelector('#reload-local')!.addEventListener('click', () => {
     const loaded = loadFromLocalStorage();
     if (!loaded) {
-      setStatus('No project found in localStorage.', 'err');
+      setStatus('No saved project in this browser yet.', 'err');
       return;
     }
     store.replaceProject(loaded);
     editor.setSelectedZoneId(loaded.zones[0]?.id ?? null);
     sourcePanel.setZoneId(loaded.zones[0]?.id ?? null);
-    setStatus(`Reloaded “${loaded.name}” from localStorage.`);
+    setStatus(`Reloaded “${loaded.name}”.`);
   });
 
   root.querySelector('#export-json')!.addEventListener('click', () => {
     downloadProjectJson(store.getState());
-    setStatus('Exported project JSON.');
+    setStatus('Exported project file.');
   });
 
   importInput.addEventListener('change', async () => {
@@ -448,7 +516,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   syncBlackoutUi();
   render();
   broadcast();
-  setStatus('Ready — open output for the projector, or Split 2×2 / 3×3 on a selected zone.');
+  setStatus('Ready — start with Open output, then pin your zone corners.');
 }
 
 function escapeAttr(value: string): string {
