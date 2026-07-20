@@ -4,7 +4,7 @@ Local browser app for HDMI projection mapping: draw corner-pinned zones, assign 
 
 **Stack:** Vanilla TypeScript · Vite · WebGL2 · `BroadcastChannel` editor↔output sync.
 
-See [PROGRESS.md](./PROGRESS.md) for build history and [SPEC.md](./SPEC.md) for the product spec.
+See [TUTORIAL.md](./TUTORIAL.md) for a logo-on-object walkthrough and how the mapping works, [PROGRESS.md](./PROGRESS.md) for build history, and [SPEC.md](./SPEC.md) for the product spec.
 
 ## Quick start
 
