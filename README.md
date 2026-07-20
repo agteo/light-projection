@@ -1,4 +1,4 @@
-# Lazy Mapper
+# Light Mapper
 
 Local browser app for HDMI projection mapping: draw corner-pinned zones, assign effects or media, warp them with a projective (homography) transform, and output a fullscreen composite to a second display.
 
@@ -86,7 +86,7 @@ The **Strobe** effect is capped at **3 Hz** by default. Unlocking higher rates s
 ## Architecture (short)
 
 - Editor and output each run their own WebGL render loop.
-- Shared project state syncs over `BroadcastChannel` (`lazy-mapper-sync-v1`).
+- Shared project state syncs over `BroadcastChannel` (`light-mapper-sync-v1`).
 - Zone warps use a CPU 3×3 homography with per-fragment inverse mapping (no affine triangle seams).
 
 ## Non-goals (v1)

@@ -35,8 +35,8 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
     <div class="shell">
       <header class="topbar">
         <div class="brand">
-          <h1>Lazy Mapper</h1>
-          <p class="tag">Lazy Mapper — local projection mapping</p>
+          <h1>Light Mapper</h1>
+          <p class="tag">Light Mapper — local projection mapping</p>
         </div>
         <div class="topbar-actions">
           <label class="field name-field">

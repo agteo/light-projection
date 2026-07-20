@@ -119,7 +119,7 @@ export function projectFromJson(text: string): Project {
   return parseProjectJson(JSON.parse(text) as unknown);
 }
 
-export const STORAGE_KEY = 'lazy-mapper.project';
+export const STORAGE_KEY = 'light-mapper.project';
 
 export function saveToLocalStorage(project: Project): void {
   localStorage.setItem(STORAGE_KEY, projectToJson(project));
@@ -148,7 +148,7 @@ export function downloadProjectJson(project: Project, filename?: string): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename ?? `${slugify(project.name) || 'lazy-mapper'}.json`;
+  a.download = filename ?? `${slugify(project.name) || 'light-mapper'}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

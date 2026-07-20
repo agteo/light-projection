@@ -1,7 +1,7 @@
 import type { Project } from '../domain/types';
 import type { RenderMode } from '../render/renderer';
 
-export const SYNC_CHANNEL = 'lazy-mapper-sync-v1';
+export const SYNC_CHANNEL = 'light-mapper-sync-v1';
 
 export type SyncMessage =
   | { type: 'hello'; role: 'output' | 'editor' }

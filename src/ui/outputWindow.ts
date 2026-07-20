@@ -16,7 +16,7 @@ export async function openOutputWindow(): Promise<Window | null> {
       if (external) {
         const placed = window.open(
           url,
-          'lazy-mapper-output',
+          'light-mapper-output',
           `${features},left=${Math.round(external.left + 40)},top=${Math.round(external.top + 40)},width=${Math.min(1280, external.width - 80)},height=${Math.min(720, external.height - 80)}`,
         );
         if (placed) return placed;
@@ -26,5 +26,5 @@ export async function openOutputWindow(): Promise<Window | null> {
     /* permission denied or unsupported — fall through */
   }
 
-  return window.open(url, 'lazy-mapper-output', features);
+  return window.open(url, 'light-mapper-output', features);
 }

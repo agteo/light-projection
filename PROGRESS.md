@@ -1,4 +1,4 @@
-# Lazy Mapper — Progress
+# Light Mapper — Progress
 
 Living tracker for building the local web projection-mapping app from `SPEC.md`.
 
@@ -53,7 +53,7 @@ Status legend: `⬜ todo` · `🚧 in progress` · `✅ done` · `⛔ blocked`
 ## Phase 6 notes (2026-07-19)
 
 - `output.html` + `src/outputMain.ts` — projector window, black background only
-- Sync: `BroadcastChannel` (`lazy-mapper-sync-v1`) shares project + render mode; output hydrates blob media URLs
+- Sync: `BroadcastChannel` (`light-mapper-sync-v1`) shares project + render mode; output hydrates blob media URLs
 - Editor: **Open output**, **Blackout (B)**; modes (Live/Test/White) sync to output
 - Output: Fullscreen button / `F`; blackout `/B`; HUD on mouse move
 - Optional `getScreenDetails()` placement on a secondary display; falls back to manual drag + F11
@@ -94,7 +94,7 @@ Status legend: `⬜ todo` · `🚧 in progress` · `✅ done` · `⛔ blocked`
 
 ## Phase 1 notes (2026-07-19)
 
-- Package: `lazy-mapper` (Vite 8 + TypeScript)
+- Package: `light-mapper` (Vite 8 + TypeScript)
 - Domain: `src/domain/types.ts`, `src/domain/factory.ts`
 - State: `src/state/store.ts` (subscribe + mutations, auto-persists)
 - Persistence: `src/state/persistence.ts` — serializes media as filename + `missing: true` (no object URLs in JSON)

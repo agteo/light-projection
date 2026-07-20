@@ -1,8 +1,8 @@
-# Lazy Mapper — Product Spec
+# Light Mapper — Product Spec
 
 ## Context
 
-Lazy Mapper is a local web app that turns any HDMI projector into a projection mapping tool. The user draws quad-shaped "zones" over real-world surfaces, assigns visuals (effects, images, videos) to each zone, warps the corners so projections align with physical objects, and makes visuals react to audio/MIDI. It runs entirely in the browser with no backend.
+Light Mapper is a local web app that turns any HDMI projector into a projection mapping tool. The user draws quad-shaped "zones" over real-world surfaces, assigns visuals (effects, images, videos) to each zone, warps the corners so projections align with physical objects, and makes visuals react to audio/MIDI. It runs entirely in the browser with no backend.
 
 ## Deliverable
 
