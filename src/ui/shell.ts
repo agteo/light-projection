@@ -59,6 +59,10 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
             <button type="button" id="toggle-blackout">Blackout (B)</button>
           </div>
         </div>
+        <p class="muted output-device-hint">
+          Open output needs a second window on the computer attached to the projector.
+          On a phone, edit here, then export the project and open it there.
+        </p>
       </header>
 
       ${
@@ -70,13 +74,14 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
           <button type="button" id="dismiss-getting-started" class="text-btn" title="Hide this guide">Dismiss</button>
         </div>
         <ol class="getting-started-steps">
-          <li>Connect a projector as an <strong>extended</strong> display (not mirrored).</li>
-          <li>Click <strong>Open output</strong>, drag that window to the projector, then fullscreen it.</li>
-          <li>Try <strong>White</strong> or <strong>Test pattern</strong> above to focus and align.</li>
-          <li>Drag the zone’s corner handles so they match your physical surface.</li>
+          <li>On the projector computer, connect it as an <strong>extended</strong> display (not mirrored).</li>
+          <li>Click <strong>Open output</strong> on that computer, drag that window to the projector, then fullscreen it.</li>
+          <li>Try <strong>White</strong> or <strong>Test pattern</strong> to focus and align.</li>
+          <li>Drag the zone’s corner handles so they match your physical surface. Pinch to scale, or Shift-drag on a trackpad.</li>
           <li>In <strong>Source</strong>, pick <strong>Image</strong> and load a logo or photo.</li>
         </ol>
         <p class="muted getting-started-more">
+          On a phone you can edit a project here, then export the file and open it on the projector computer.
           Need more detail?
           <a href="${TUTORIAL_URL}" target="_blank" rel="noopener noreferrer">Full tutorial on GitHub</a>
         </p>
@@ -439,7 +444,13 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   openOutputBtn.addEventListener('click', async () => {
     const win = await openOutputWindow();
     if (!win) {
-      setStatus('Popup blocked — allow popups for this site, then try again.', 'err');
+      const onPhone = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+      setStatus(
+        onPhone
+          ? 'Output needs a second window on the computer attached to the projector. Export this project and open it there.'
+          : 'Popup blocked — allow popups for this site, then try again.',
+        'err',
+      );
       return;
     }
     broadcast();
@@ -516,7 +527,7 @@ export function mountEditorShell(root: HTMLElement, store: ProjectStore): void {
   syncBlackoutUi();
   render();
   broadcast();
-  setStatus('Ready — start with Open output, then pin your zone corners.');
+  setStatus('Ready — pin zone corners in the preview. Open output on the computer attached to the projector.');
 }
 
 function escapeAttr(value: string): string {

@@ -3,7 +3,8 @@ import { isConvexQuad } from '../math/homography';
 import type { WebGLRenderer } from '../render/renderer';
 import type { ProjectStore } from '../state/store';
 
-const HANDLE_HIT_PX = 14;
+const HANDLE_HIT_FINE_PX = 14;
+const HANDLE_HIT_COARSE_PX = 28;
 
 type Corners = [Vec2, Vec2, Vec2, Vec2];
 
@@ -25,6 +26,21 @@ type DragState =
       center: Vec2;
     }
   | null;
+
+type PinchState = {
+  zoneId: string;
+  startDist: number;
+  startCorners: Corners;
+  center: Vec2;
+};
+
+function coarsePointer(): boolean {
+  return window.matchMedia('(any-pointer: coarse)').matches;
+}
+
+function handleHitPx(): number {
+  return coarsePointer() ? HANDLE_HIT_COARSE_PX : HANDLE_HIT_FINE_PX;
+}
 
 function pointInQuad(p: Vec2, corners: readonly Corners[number][]): boolean {
   let sign = 0;
@@ -132,11 +148,13 @@ export function mountCanvasEditor(
     wrap.appendChild(hint);
   }
     hint.textContent =
-      'Drag corners to match your surface. Drag inside to move · Shift-drag to scale · arrows to nudge.';
+      'Drag corners to match your surface. Drag inside to move · pinch or Shift-drag to scale · arrows to nudge.';
 
   let selectedZoneId: string | null = store.getState().zones[0]?.id ?? null;
   let selectedCornerIndex: number | null = null;
   let drag: DragState = null;
+  let pinch: PinchState | null = null;
+  const activePointers = new Map<number, { x: number; y: number }>();
 
   const setSelected = (id: string | null, cornerIndex: number | null = null): void => {
     selectedZoneId = id;
@@ -153,8 +171,8 @@ export function mountCanvasEditor(
 
   const syncSize = (): void => {
     const rect = stage!.getBoundingClientRect();
-    const w = Math.max(320, Math.floor(rect.width || wrap.clientWidth));
-    const h = Math.max(240, Math.floor((w * 9) / 16));
+    const w = Math.max(160, Math.floor(rect.width || wrap.clientWidth || 160));
+    const h = Math.max(90, Math.floor((w * 9) / 16));
     renderer.resize(w, h);
     stage!.style.height = `${h}px`;
     overlay!.width = renderer.canvas.width;
@@ -174,7 +192,7 @@ export function mountCanvasEditor(
 
   const hitThreshold = (): number => {
     const rect = overlay!.getBoundingClientRect();
-    return HANDLE_HIT_PX / Math.min(rect.width, rect.height);
+    return handleHitPx() / Math.min(rect.width, rect.height);
   };
 
   const hitCorner = (p: Vec2, zone: Zone): number | null => {
@@ -232,23 +250,26 @@ export function mountCanvasEditor(
 
       if (!selected) continue;
 
+      const coarse = coarsePointer();
+      const edgeHalf = (coarse ? 8 : 5) * dpr;
+      const cornerR = (active: boolean) => (coarse ? (active ? 14 : 11) : active ? 8 : 6) * dpr;
+
       for (let i = 0; i < 4; i++) {
         const mid = edgeMidpoint(zone.corners, i);
         const mx = mid.x * w;
         const my = mid.y * h;
-        const s = 5 * dpr;
         ctx.fillStyle = '#9ec9ff';
-        ctx.fillRect(mx - s, my - s, s * 2, s * 2);
+        ctx.fillRect(mx - edgeHalf, my - edgeHalf, edgeHalf * 2, edgeHalf * 2);
         ctx.strokeStyle = '#0b0d12';
         ctx.lineWidth = 1.25 * dpr;
-        ctx.strokeRect(mx - s, my - s, s * 2, s * 2);
+        ctx.strokeRect(mx - edgeHalf, my - edgeHalf, edgeHalf * 2, edgeHalf * 2);
       }
 
       for (let i = 0; i < 4; i++) {
         const p = pts[i]!;
         const active = selectedCornerIndex === i;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, (active ? 8 : 6) * dpr, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, cornerR(active), 0, Math.PI * 2);
         ctx.fillStyle = active ? '#ffe08a' : '#6db3ff';
         ctx.fill();
         ctx.strokeStyle = '#0b0d12';
@@ -263,9 +284,50 @@ export function mountCanvasEditor(
     ...projectZones.filter((z) => z.id !== selectedZoneId),
   ];
 
+  const pinchDistance = (): number => {
+    const pts = [...activePointers.values()];
+    if (pts.length < 2) return 0;
+    return Math.hypot(pts[0]!.x - pts[1]!.x, pts[0]!.y - pts[1]!.y);
+  };
+
+  const beginPinch = (): void => {
+    drag = null;
+    const project = store.getState();
+    const pts = [...activePointers.values()];
+    const mid =
+      pts.length >= 2
+        ? toNorm((pts[0]!.x + pts[1]!.x) / 2, (pts[0]!.y + pts[1]!.y) / 2)
+        : null;
+    const hit =
+      (selectedZoneId && project.zones.find((z) => z.id === selectedZoneId && z.visible)) ||
+      (mid &&
+        [...project.zones]
+          .filter((z) => z.visible && pointInQuad(mid, z.corners))
+          .sort((a, b) => b.zIndex - a.zIndex)[0]);
+    if (!hit) {
+      pinch = null;
+      return;
+    }
+    const startCorners = cloneCorners(hit.corners);
+    pinch = {
+      zoneId: hit.id,
+      startDist: pinchDistance(),
+      startCorners,
+      center: centroid(startCorners),
+    };
+    setSelected(hit.id, null);
+  };
+
   const onPointerDown = (event: PointerEvent): void => {
     overlay!.focus();
     overlay!.setPointerCapture(event.pointerId);
+    activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    if (activePointers.size >= 2) {
+      beginPinch();
+      return;
+    }
+
     const p = toNorm(event.clientX, event.clientY);
     const project = store.getState();
 
@@ -320,6 +382,17 @@ export function mountCanvasEditor(
   };
 
   const onPointerMove = (event: PointerEvent): void => {
+    if (activePointers.has(event.pointerId)) {
+      activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    }
+
+    if (pinch && activePointers.size >= 2) {
+      if (pinch.startDist < 8) return;
+      const scale = Math.min(4, Math.max(0.15, pinchDistance() / pinch.startDist));
+      tryCommitCorners(store, pinch.zoneId, scaleCorners(pinch.startCorners, pinch.center, scale));
+      return;
+    }
+
     if (!drag) return;
     const active = drag;
     const p = toNorm(event.clientX, event.clientY);
@@ -371,10 +444,12 @@ export function mountCanvasEditor(
   };
 
   const onPointerUp = (event: PointerEvent): void => {
+    activePointers.delete(event.pointerId);
     if (overlay!.hasPointerCapture(event.pointerId)) {
       overlay!.releasePointerCapture(event.pointerId);
     }
-    drag = null;
+    if (activePointers.size < 2) pinch = null;
+    if (activePointers.size === 0) drag = null;
   };
 
   const onDblClick = (event: MouseEvent): void => {

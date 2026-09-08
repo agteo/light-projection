@@ -23,6 +23,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 button,
@@ -37,6 +38,10 @@ input,
   padding: 2rem 1.25rem 3rem;
   display: grid;
   gap: 1.25rem;
+}
+
+.shell > * {
+  min-width: 0;
 }
 
 .canvas-panel .panel-head {
@@ -59,6 +64,7 @@ button.active {
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--border);
+  overscroll-behavior: none;
 }
 
 .canvas-stage {
@@ -124,6 +130,12 @@ button.active {
   gap: 1rem;
   align-items: end;
   justify-content: space-between;
+}
+
+.output-device-hint {
+  display: none;
+  flex-basis: 100%;
+  margin: 0;
 }
 
 .topbar-actions {
@@ -198,6 +210,7 @@ button.active {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
+  flex-wrap: wrap;
   margin-bottom: 0.65rem;
 }
 
@@ -242,6 +255,7 @@ button.active {
   display: flex;
   align-items: center;
   gap: 0.55rem;
+  min-height: 44px;
   font-size: 1rem;
   font-weight: 600;
   user-select: none;
@@ -297,6 +311,9 @@ button.active {
   color: var(--muted);
   font-size: 0.85rem;
   user-select: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 
 .nested-advanced[open] > summary {
@@ -314,6 +331,7 @@ button.active {
 
 .panel-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -329,6 +347,18 @@ button.active {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+button,
+.file-btn,
+select,
+.field input,
+.zone-name {
+  min-height: 44px;
+}
+
+.select-zone {
+  min-width: 44px;
 }
 
 button,
@@ -534,6 +564,7 @@ button.danger,
 .midi-target-row,
 .midi-mapping-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -582,11 +613,80 @@ select {
 }
 
 input[type='color'] {
-  height: 2.2rem;
+  height: 2.75rem;
+  min-height: 44px;
   padding: 0.15rem;
   background: #0e1117;
   border: 1px solid var(--border);
   border-radius: 6px;
+}
+
+@media (max-width: 640px), (hover: none) and (pointer: coarse) {
+  .output-device-hint {
+    display: block;
+  }
+}
+
+@media (max-width: 640px) {
+  .shell {
+    padding: 1rem 0.85rem 2rem;
+  }
+
+  .brand h1 {
+    font-size: 1.45rem;
+  }
+
+  .field {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .topbar-actions,
+  .name-field {
+    width: 100%;
+  }
+
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+
+  .zone-row {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      'select name zdown zup'
+      'select meta dup del';
+    row-gap: 0.35rem;
+  }
+
+  .zone-row .select-zone {
+    grid-area: select;
+    align-self: stretch;
+  }
+
+  .zone-row .zone-name {
+    grid-area: name;
+  }
+
+  .zone-row .meta {
+    grid-area: meta;
+    white-space: normal;
+  }
+
+  .zone-row [data-zdown] {
+    grid-area: zdown;
+  }
+
+  .zone-row [data-zup] {
+    grid-area: zup;
+  }
+
+  .zone-row [data-dup] {
+    grid-area: dup;
+  }
+
+  .zone-row [data-del] {
+    grid-area: del;
+  }
 }
 
 /* Output window (also used if styles load there) */
